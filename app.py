@@ -4,9 +4,10 @@ from typing import Dict, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
-
+from dotenv import load_dotenv
+load_dotenv()
 # Use environment variable for API key with fallback to hardcoded (for dev)
-resend.api_key = os.getenv("RESEND_API_KEY", "re_Wgo3RJPU_MPKbjHsZh8XmBKLNaNSA7ikg")
+resend.api_key = os.getenv("RESEND_API_KEY")
 
 app = FastAPI(title="Raju Visuals Email API")
 
