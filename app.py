@@ -19,7 +19,9 @@ app.add_middleware(
         "http://localhost:3000",      # Alternative dev port
         "https://rajuvisuals.com",    # Production domain
         "https://www.rajuvisuals.com", # Production with www
-        "https://rajuvisuals.pythonanywhere.com",  # PythonAnywhere
+        "https://rajuvisuals.in",  
+        "https://www.rajuvisuals.in",
+        
     ],
     allow_credentials=True,
     allow_methods=["*"],
