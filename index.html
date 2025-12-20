@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAJU | Visual Storytelling</title>
+  <link rel="icon" type="image/png" href="/rv logo.png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #070707;
+      color: #ffffff;
+      overflow-x: hidden;
+    }
+
+    /* Smooth scrolling for anchor links */
+    html {
+      scroll-behavior: smooth;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #070707;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #2a2a2a;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #9B5CFF;
+    }
+
+    .neon-text-shadow {
+      text-shadow: 0 0 15px rgba(138, 99, 248, 0.6);
+    }
+
+    .orbital-ring {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    /* Utilities for custom gradients */
+    .bg-text-gradient {
+      background: linear-gradient(90deg, #6A5AF9 0%, #9B5CFF 60%, #BF7CFF 100%);
+    }
+
+    .bg-btn-gradient {
+      background: linear-gradient(90deg, #8A63F8 0%, #7B4BFF 100%);
+    }
+
+    /* Shimmer animation for premium text effect */
+    @keyframes shimmer {
+      0% {
+        background-position: -200% center;
+      }
+
+      100% {
+        background-position: 200% center;
+      }
+    }
+
+    .shimmer-text {
+      background: linear-gradient(90deg,
+          #6A5AF9 0%,
+          #9B5CFF 25%,
+          #E8DDFF 50%,
+          #9B5CFF 75%,
+          #6A5AF9 100%);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: shimmer 3s linear infinite;
+    }
+
+    /* Pulse glow for timeline dots */
+    @keyframes pulseGlow {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(155, 92, 255, 0.4);
+        transform: scale(1);
+      }
+
+      50% {
+        box-shadow: 0 0 20px 4px rgba(155, 92, 255, 0.2);
+        transform: scale(1.1);
+      }
+    }
+
+    .pulse-glow {
+      animation: pulseGlow 2s ease-in-out infinite;
+    }
+
+    /* Glassmorphism utility */
+    .glass-card {
+      background: rgba(22, 22, 22, 0.6);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    /* Animated border glow */
+    @keyframes borderGlow {
+
+      0%,
+      100% {
+        border-color: rgba(155, 92, 255, 0.2);
+      }
+
+      50% {
+        border-color: rgba(155, 92, 255, 0.5);
+      }
+    }
+
+    .animate-border-glow:hover {
+      animation: borderGlow 1.5s ease-in-out infinite;
+    }
+
+    /* Button glow effect */
+    .btn-glow-hover:hover {
+      box-shadow: 0 0 30px rgba(138, 99, 248, 0.4), 0 0 60px rgba(138, 99, 248, 0.2);
+    }
+
+    /* 3D tilt perspective */
+    .tilt-card {
+      transform-style: preserve-3d;
+      perspective: 1000px;
+    }
+  </style>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            neon: {
+              DEFAULT: '#9B5CFF', // Mid-tone purple accent
+              dim: 'rgba(138, 99, 248, 0.15)',
+              hover: '#BF7CFF'    // Lighter purple
+            },
+            dark: {
+              surface: '#0F0F0F',
+              card: '#161616',
+              border: '#2A2A2A'
+            },
+            purple: {
+              glow: '#6A5AF9'
+            }
+          },
+          animation: {
+            'spin-slow': 'spin 12s linear infinite',
+            'spin-reverse-slow': 'spin 12s linear infinite reverse',
+            'float': 'float 6s ease-in-out infinite',
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0)' },
+              '50%': { transform: 'translateY(-20px)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
+    "framer-motion": "https://aistudiocdn.com/framer-motion@^11.0.0",
+    "ogl": "https://aistudiocdn.com/ogl@^1.0.11"
+  }
+}
+</script>
+  <link rel="stylesheet" href="/index.css">
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
+</html>
