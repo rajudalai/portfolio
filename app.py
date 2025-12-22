@@ -15,8 +15,6 @@ app = FastAPI(title="Raju Visuals Email API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",      # Vite dev server
-        "http://localhost:3000",      # Alternative dev port
         "https://rajuvisuals.com",    # Production domain
         "https://www.rajuvisuals.com", # Production with www
         "https://rajuvisuals.in",  
@@ -340,7 +338,7 @@ async def send_contact_emails(form: ContactFormRequest) -> ContactFormResponse:
         # Send notification email to admin
         admin_email_params: resend.Emails.SendParams = {
             "from": "Contact Form <reply@rajuvisuals.com>",
-            "to": ["contact@rajuvisuals.com"],
+            "to": ["contact@rajuvisuals.in"],
             "reply_to": form.from_email,
             "subject": f"New Contact: {form.subject}",
             "html": get_admin_notification_html(
