@@ -7,6 +7,7 @@ import ContactForm from '../components/ContactForm';
 import LightRays from '../components/LightRays';
 import { ArrowRight, Maximize2, X, Play, TrendingUp, Palette, Zap, Loader2, Quote } from 'lucide-react';
 import { motion, Variants, AnimatePresence } from 'framer-motion';
+import { SEO } from '../components/SEO';
 
 interface HomeProps {
   onNavigate: (page: PageRoute) => void;
@@ -262,8 +263,16 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onScrollTo }) => {
     }
   };
 
+  // ... imports ...
+
+  // ... inside Home component ...
+
   return (
     <div className="flex flex-col w-full">
+      <SEO
+        title="Home"
+        description={content.home.hero.subtitle || "Cinematic video editing and visual storytelling portfolio."}
+      />
       {/* 4.1 HERO SECTION - STATIC & EXACT REFERENCE */}
       <section className="relative min-h-screen flex items-center  overflow-hidden bg-[#070707] sm:pt-16 pt-10">
 
@@ -382,7 +391,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onScrollTo }) => {
               className="relative z-10"
             >
               <img
-                src="https://github.com/ayushkanha/task3/blob/main/portfolio%20image%202.png?raw=true"
+                src={content.home.hero.image || "https://github.com/ayushkanha/task3/blob/main/portfolio%20image%202.png?raw=true"}
                 alt="Hero Visual"
                 className="w-[350px] h-[350px] md:w-[450px] md:h-[450px] object-cover rounded-3xl shadow-2xl "
               />
@@ -832,6 +841,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onScrollTo }) => {
                   <p className="text-lg text-gray-300 leading-relaxed font-geist relative z-10">
                     "<span dangerouslySetInnerHTML={{ __html: testimonial.quote }} />"
                   </p>
+                  <div className="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
                   <div className="flex items-center gap-4">
                     <img

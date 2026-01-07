@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react';
-import { PageRoute } from '../types';
+import { PageRoute, NavSettings } from '../types';
+import { db } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface NavbarProps {
   currentPage: PageRoute;
@@ -11,18 +13,40 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onScrollTo }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [navSettings, setNavSettings] = useState<NavSettings>({
+    showWork: true,
+    showAbout: true,
+    showAssets: true,
+    showPricing: true,
+    showContact: true
+  });
 
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
     };
     window.addEventListener('scroll', handleScroll);
+
+    // Fetch nav settings
+    const fetchNavSettings = async () => {
+      try {
+        const docRef = doc(db, 'settings', 'nav');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          setNavSettings(docSnap.data() as NavSettings);
+        }
+      } catch (error) {
+        console.error("Error fetching nav settings:", error);
+      }
+    };
+    fetchNavSettings();
+
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const handleNavClick = (page: PageRoute | null, sectionId?: string) => {
     setMobileMenuOpen(false);
-    
+
     if (page && page !== currentPage) {
       onNavigate(page);
       // If there's a section ID, we need to wait for the page to mount (handled in App parent usually, 
@@ -43,15 +67,14 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onScrollTo }) 
 
   return (
     <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${
-        isScrolled
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b ${isScrolled
           ? 'bg-[#070707]/80 backdrop-blur-md border-white/10 py-4'
           : 'bg-transparent border-transparent py-6'
-      }`}
+        }`}
     >
       <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
         {/* Logo */}
-        <div 
+        <div
           className="text-2xl font-bold tracking-tighter cursor-pointer group"
           onClick={() => handleNavClick('home')}
         >
@@ -60,36 +83,39 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onScrollTo }) 
 
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-8">
-          <button 
-            onClick={() => handleNavClick('work')}
-            className={`text-sm font-medium transition-colors hover:text-neon ${currentPage === 'work' ? 'text-neon' : 'text-gray-300'}`}
-          >
-            Work
-          </button>
-          <button 
-            onClick={() => handleNavClick(null, 'about')}
-            className="text-sm font-medium text-gray-300 transition-colors hover:text-neon"
-          >
-            About
-          </button>
-          <button 
-            onClick={() => handleNavClick('assets')}
-            className={`text-sm font-medium transition-colors hover:text-neon ${currentPage === 'assets' ? 'text-neon' : 'text-gray-300'}`}
-          >
-            Assets
-          </button>
-          <button 
-            onClick={() => handleNavClick('pricing')}
-            className={`text-sm font-medium transition-colors hover:text-neon ${currentPage === 'pricing' ? 'text-neon' : 'text-gray-300'}`}
-          >
-            Pricing
-          </button>
-          <button 
-            onClick={() => handleNavClick(null, 'contact')}
-            className="text-sm font-medium text-gray-300 transition-colors hover:text-neon"
-          >
-            Contact
-          </button>
+          {navSettings.showWork && (
+            <button
+              onClick={() => handleNavClick('work')}
+              className={`text-sm font-medium transition-colors hover:text-neon ${currentPage === 'work' ? 'text-neon' : 'text-gray-300'}`}
+            >
+              Work
+            </button>
+          )}
+          {navSettings.showAbout && (
+            <button
+              onClick={() => handleNavClick(null, 'about')}
+              className="text-sm font-medium text-gray-300 transition-colors hover:text-neon"
+            >
+              About
+            </button>
+          )}
+          {navSettings.showAssets && (
+            <button
+              onClick={() => handleNavClick('assets')}
+              className={`text-sm font-medium transition-colors hover:text-neon ${currentPage === 'assets' ? 'text-neon' : 'text-gray-300'}`}
+            >
+              Assets
+            </button>
+          )}
+          {navSettings.showPricing && (
+            <button
+              onClick={() => handleNavClick('pricing')}
+              className={`text-sm font-medium transition-colors hover:text-neon ${currentPage === 'pricing' ? 'text-neon' : 'text-gray-300'}`}
+            >
+              Pricing
+            </button>
+          )}
+
 
           {/* Pill Button */}
           <button
@@ -111,17 +137,17 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, onScrollTo }) 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden absolute top-full left-0 right-0 bg-[#070707] border-b border-white/10 p-6 flex flex-col gap-6 shadow-2xl">
-           <button onClick={() => handleNavClick('work')} className="text-left text-lg font-medium text-gray-300 hover:text-neon">Work</button>
-           <button onClick={() => handleNavClick(null, 'about')} className="text-left text-lg font-medium text-gray-300 hover:text-neon">About</button>
-           <button onClick={() => handleNavClick('assets')} className="text-left text-lg font-medium text-gray-300 hover:text-neon">Assets</button>
-           <button onClick={() => handleNavClick('pricing')} className="text-left text-lg font-medium text-gray-300 hover:text-neon">Pricing</button>
-           <button onClick={() => handleNavClick(null, 'contact')} className="text-left text-lg font-medium text-gray-300 hover:text-neon">Contact</button>
-           <button 
+          {navSettings.showWork && <button onClick={() => handleNavClick('work')} className="text-left text-lg font-medium text-gray-300 hover:text-neon">Work</button>}
+          {navSettings.showAbout && <button onClick={() => handleNavClick(null, 'about')} className="text-left text-lg font-medium text-gray-300 hover:text-neon">About</button>}
+          {navSettings.showAssets && <button onClick={() => handleNavClick('assets')} className="text-left text-lg font-medium text-gray-300 hover:text-neon">Assets</button>}
+          {navSettings.showPricing && <button onClick={() => handleNavClick('pricing')} className="text-left text-lg font-medium text-gray-300 hover:text-neon">Pricing</button>}
+          {navSettings.showContact && <button onClick={() => handleNavClick(null, 'contact')} className="text-left text-lg font-medium text-gray-300 hover:text-neon">Contact</button>}
+          <button
             onClick={() => handleNavClick(null, 'contact')}
             className="w-full py-3 bg-white text-black rounded-full text-base font-bold text-center"
-           >
-             Work With Me
-           </button>
+          >
+            Work With Me
+          </button>
         </div>
       )}
     </nav>

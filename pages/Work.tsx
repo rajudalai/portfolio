@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../firebase';
 import { collection, getDocs, orderBy, query, doc, getDoc } from 'firebase/firestore';
 import { Maximize2, X } from 'lucide-react';
+import { SEO } from '../components/SEO';
 import { getCachedData, setCachedData, isCacheValid, getCachedSettings, setCachedSettings } from '../utils/cacheService';
 
 const isVideo = (project: Project) => {
@@ -274,6 +275,11 @@ const Work: React.FC = () => {
 
     return (
         <div className="pt-32 pb-24 min-h-screen bg-[#070707]">
+            <SEO
+                title="Selected Works"
+                description="A curated collection of my best video edits, designs, and motion projects."
+                url={window.location.href}
+            />
             <div className="max-w-7xl mx-auto px-6">
 
                 {/* Header */}

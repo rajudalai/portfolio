@@ -24,7 +24,7 @@ const OrbitalWorkflow: React.FC<OrbitalWorkflowProps> = ({
 }) => {
   return (
     <div id="workflow" className="relative w-full py-24 bg-[#070707] overflow-hidden flex flex-col items-center min-h-[800px] justify-center">
-      
+
       {/* Background radial glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#6A5AF9]/10 rounded-full blur-[120px] pointer-events-none" />
 
@@ -48,17 +48,17 @@ const OrbitalWorkflow: React.FC<OrbitalWorkflowProps> = ({
         <div className="absolute w-[100%] h-[100%] border border-white/5 rounded-full box-border" />
 
         {/* --- ORBITING LAYERS --- */}
-        
+
         {/* Orbit Path 1 (Middle Ring - Clockwise 30s) */}
-        <div className="absolute w-[70%] h-[70%] animate-spin-30s-cw rounded-full pointer-events-none">
+        <div className="absolute w-[70%] h-[70%] animate-spin-30s-cw pointer-events-none">
           {/* Icon 1: Top Position */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
             {/* Counter-rotate at EXACTLY same speed (30s) to keep icon upright */}
             <div className="animate-spin-30s-ccw">
-               <OrbitalIcon item={items[0]} color="blue" />
+              <OrbitalIcon item={items[0]} color="blue" />
             </div>
           </div>
-          
+
           {/* Icon 2: Bottom Position */}
           <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 pointer-events-auto">
             <div className="animate-spin-30s-ccw">
@@ -71,16 +71,16 @@ const OrbitalWorkflow: React.FC<OrbitalWorkflowProps> = ({
         <div className="absolute w-[100%] h-[100%] animate-spin-45s-ccw rounded-full pointer-events-none">
           {/* Icon 3: Left Position */}
           <div className="absolute top-1/2 left-0 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
-             {/* Counter-rotate at EXACTLY same speed (45s) to keep icon upright */}
-            <div className="animate-spin-45s-cw"> 
-               <OrbitalIcon item={items[2]} color="cyan" />
+            {/* Counter-rotate at EXACTLY same speed (45s) to keep icon upright */}
+            <div className="animate-spin-45s-cw">
+              <OrbitalIcon item={items[2]} color="cyan" />
             </div>
           </div>
 
           {/* Icon 4: Right Position */}
           <div className="absolute top-1/2 right-0 translate-x-1/2 -translate-y-1/2 pointer-events-auto">
             <div className="animate-spin-45s-cw">
-               <OrbitalIcon item={items[3]} color="purple" />
+              <OrbitalIcon item={items[3]} color="purple" />
             </div>
           </div>
         </div>
@@ -90,7 +90,7 @@ const OrbitalWorkflow: React.FC<OrbitalWorkflowProps> = ({
           <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500/10 to-[#6A5AF9]/10 opacity-40"></div>
           <div className="absolute inset-0 rounded-full shadow-[inset_0_0_20px_rgba(255,255,255,0.03)]"></div>
 
-          <h3 className="font-bold text-2xl tracking-tight text-white relative z-10">RAJU</h3>
+          <h3 className="font-bold text-2xl tracking-tight text-white relative z-10">VISUALS</h3>
           <span className="text-[10px] md:text-xs font-bold text-[#6A5AF9] tracking-widest relative z-10 mt-1 uppercase">Creative Hub</span>
         </div>
 
@@ -131,23 +131,23 @@ const OrbitalWorkflow: React.FC<OrbitalWorkflowProps> = ({
 // Helper component for the Icon bubble
 const OrbitalIcon = ({ item, color = "blue" }: { item: WorkflowItem, color?: string }) => {
   if (!item) return null;
-  
-  const borderColor = 
-    color === 'orange' ? 'border-orange-500/40' : 
-    color === 'cyan' ? 'border-cyan-500/40' : 
-    color === 'purple' ? 'border-purple-500/40' : 
-    'border-blue-500/40';
 
-  const shadowColor = 
-    color === 'orange' ? 'shadow-[0_0_20px_rgba(249,115,22,0.2)]' : 
-    color === 'cyan' ? 'shadow-[0_0_20px_rgba(6,182,212,0.2)]' : 
-    color === 'purple' ? 'shadow-[0_0_20px_rgba(168,85,247,0.2)]' : 
-    'shadow-[0_0_20px_rgba(59,130,246,0.2)]';
+  const borderColor =
+    color === 'orange' ? 'border-orange-500/40' :
+      color === 'cyan' ? 'border-cyan-500/40' :
+        color === 'purple' ? 'border-purple-500/40' :
+          'border-blue-500/40';
+
+  const shadowColor =
+    color === 'orange' ? 'shadow-[0_0_20px_rgba(249,115,22,0.2)]' :
+      color === 'cyan' ? 'shadow-[0_0_20px_rgba(6,182,212,0.2)]' :
+        color === 'purple' ? 'shadow-[0_0_20px_rgba(168,85,247,0.2)]' :
+          'shadow-[0_0_20px_rgba(59,130,246,0.2)]';
 
   return (
-    <div className={`w-16 h-16 md:w-20 md:h-20 rounded-full bg-[#070707] border ${borderColor} p-2 ${shadowColor} shadow-[inset_0_0_10px_rgba(255,255,255,0.05)] overflow-hidden flex items-center justify-center relative group hover:scale-110 transition-transform duration-300 cursor-pointer`}>
+    <div className={`w-10 h-10 md:w-16 md:h-16 rounded-xl bg-[#070707] border ${borderColor} p-2 ${shadowColor} shadow-[inset_0_0_10px_rgba(255,255,255,0.05)] overflow-hidden flex items-center justify-center relative group hover:scale-110 transition-transform duration-300 cursor-pointer`}>
       {item.image ? (
-        <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-full opacity-90 group-hover:opacity-100 transition-opacity" />
+        <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-xl opacity-90 group-hover:opacity-100 transition-opacity" />
       ) : (
         <span className="text-white text-[10px] font-bold">{item.name}</span>
       )}

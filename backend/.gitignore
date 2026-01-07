@@ -1,0 +1,36 @@
+# Python Backend - Ignore Files
+
+# Environment variables (contains secrets!)
+.env
+.env.local
+
+# Firebase service account key (NEVER COMMIT!)
+serviceAccountKey.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Bun
+node_modules/
+bun.lockb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

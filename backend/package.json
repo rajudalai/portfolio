@@ -1,0 +1,17 @@
+{
+    "name": "razorpay-webhook",
+    "version": "1.0.0",
+    "description": "Razorpay webhook handler using Bun + Hono",
+    "type": "module",
+    "scripts": {
+        "dev": "bun run index.ts",
+        "start": "bun run index.ts"
+    },
+    "dependencies": {
+        "hono": "^4.0.0",
+        "firebase-admin": "^12.0.0"
+    },
+    "devDependencies": {
+        "@types/bun": "latest"
+    }
+}

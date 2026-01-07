@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Public Content: Anyone can read, only admin can write
+    match /settings/{document} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /projects/{project} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /featuredProjects/{project} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /typeOrder/{type} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /assets/{asset} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Contact Forms: Anyone can create, only admin can read/modify
+    match /contactSubmissions/{submissionId} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null;
+    }
+
+    // Purchases: Anyone can read and create (for mock purchases), only admin can update/delete
+    match /purchases/{receiptId} {
+      allow read, create: if true;
+      allow update, delete: if request.auth != null;
+    }
+
+    // Default catch-all: Secure by default
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

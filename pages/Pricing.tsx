@@ -3,6 +3,7 @@ import { Check } from 'lucide-react';
 import { motion, Variants } from 'framer-motion';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { SEO } from '../components/SEO';
 
 const Pricing: React.FC = () => {
   const [content, setContent] = useState({
@@ -81,6 +82,11 @@ const Pricing: React.FC = () => {
 
   return (
     <div className="pt-32 pb-24 min-h-screen bg-[#070707]">
+      <SEO
+        title="Pricing"
+        description="Flexible packages for serious creators. Choose a plan that scales with you."
+        url={window.location.href}
+      />
       <div className="max-w-7xl mx-auto px-6">
 
         <motion.div

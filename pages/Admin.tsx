@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { db, auth } from '../firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, writeBatch, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut, User } from 'firebase/auth';
-import { Project, FeaturedProject } from '../types';
-import { Trash2, Plus, Edit2, Loader2, Save, X, LogOut, Briefcase, Star, Menu, Upload, FileSpreadsheet, AlertTriangle, Settings, Database, ArrowUp, ArrowDown, FileText, ChevronDown, ChevronRight, Mail, Eye, EyeOff } from 'lucide-react';
+import { Project, FeaturedProject, Asset } from '../types';
+import { Trash2, Plus, Edit2, Loader2, Save, X, LogOut, Briefcase, Star, Menu, Upload, FileSpreadsheet, AlertTriangle, Settings, Database, ArrowUp, ArrowDown, FileText, ChevronDown, ChevronRight, Mail, Eye, EyeOff, Package, MessageSquare, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { clearDataCache, getCacheAgeHours } from '../utils/cacheService';
 
-type AdminTab = 'projects' | 'featured' | 'settings' | 'content' | 'messages';
+import SettingsTab from '../components/admin/SettingsTab';
+import PurchasesTab from '../components/admin/PurchasesTab';
+
+type AdminTab = 'projects' | 'featured' | 'settings' | 'content' | 'messages' | 'assets' | 'purchases';
 
 const Admin: React.FC = () => {
     const [user, setUser] = useState<User | null>(null);
@@ -68,27 +71,8 @@ const Admin: React.FC = () => {
     // Filter state for existing projects list
     const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('all');
 
-    // Type ordering state
-    interface TypeOrder {
-        id?: string;
-        typeName: string;
-        order: number;
-        visible: boolean;
-    }
-    const [typeOrders, setTypeOrders] = useState<TypeOrder[]>([]);
-    const [typeOrderLoading, setTypeOrderLoading] = useState(false);
+    // State moved to SettingsTab component
 
-    // Cache settings state
-    const [cacheEnabled, setCacheEnabled] = useState(false);
-    const [cacheDurationHours, setCacheDurationHours] = useState(24);
-    const [cacheAge, setCacheAge] = useState<number | null>(null);
-
-    // Work page settings
-    const [showCardContent, setShowCardContent] = useState(true);
-
-    // Email settings state
-    const [emailEnabled, setEmailEnabled] = useState(true);
-    const [emailApiUrl, setEmailApiUrl] = useState('');
 
     // Contact submissions state
     interface ContactSubmission {
@@ -105,7 +89,24 @@ const Admin: React.FC = () => {
     }
     const [contactSubmissions, setContactSubmissions] = useState<ContactSubmission[]>([]);
     const [submissionsLoading, setSubmissionsLoading] = useState(false);
+    const [submissionsError, setSubmissionsError] = useState<string | null>(null);
     const [expandedSubmissionId, setExpandedSubmissionId] = useState<string | null>(null);
+
+    // Assets state
+    const [assets, setAssets] = useState<Asset[]>([]);
+    const [assetsLoading, setAssetsLoading] = useState(false);
+    const [assetEditingId, setAssetEditingId] = useState<string | null>(null);
+    const [assetFormData, setAssetFormData] = useState<Omit<Asset, 'id'>>({
+        title: '',
+        description: '',
+        category: 'free',
+        type: '',
+        price: '',
+        imageUrl: '',
+        downloadLink: '',
+        order: 0
+    });
+    const [assetsError, setAssetsError] = useState<string | null>(null);
 
     // Content state - Hierarchical structure
     interface SiteContent {
@@ -500,15 +501,15 @@ const Admin: React.FC = () => {
             if (currentUser) {
                 fetchProjects();
                 fetchFeaturedProjects();
-                fetchTypeOrders();
-                fetchCacheSettings();
-                fetchEmailSettings();
+                // Settings are handled in SettingsTab component
                 fetchContent();
                 fetchContactSubmissions();
+                fetchAssets();
             } else {
                 setProjects([]);
                 setFeaturedProjects([]);
                 setContactSubmissions([]);
+                setAssets([]);
             }
         });
         return () => unsubscribe();
@@ -725,174 +726,39 @@ const Admin: React.FC = () => {
         XLSX.writeFile(workbook, 'all_projects_export.xlsx');
     };
 
-    // ============ TYPE ORDER FUNCTIONS ============
-    const fetchTypeOrders = async () => {
-        setTypeOrderLoading(true);
-        try {
-            const q = query(collection(db, 'typeOrder'), orderBy('order', 'asc'));
-            const querySnapshot = await getDocs(q);
-            const data: TypeOrder[] = querySnapshot.docs.map(doc => {
-                const docData = doc.data();
-                return {
-                    id: doc.id,
-                    typeName: docData.typeName as string,
-                    order: docData.order as number,
-                    visible: docData.visible !== false // default to true if not set
-                };
-            });
-            setTypeOrders(data);
-        } catch (error) {
-            console.error("Error fetching type orders: ", error);
-        } finally {
-            setTypeOrderLoading(false);
-        }
-    };
+    // Settings handlers moved to SettingsTab component
 
-    const saveTypeOrder = async (typeName: string, order: number, visible: boolean = true, id?: string) => {
-        try {
-            if (id) {
-                await updateDoc(doc(db, 'typeOrder', id), { order, visible });
-            } else {
-                await addDoc(collection(db, 'typeOrder'), { typeName, order, visible });
-            }
-            await fetchTypeOrders();
-        } catch (error) {
-            console.error("Error saving type order: ", error);
-        }
-    };
-
-    const toggleTypeVisibility = async (typeName: string, currentVisible: boolean, id?: string) => {
-        try {
-            if (id) {
-                await updateDoc(doc(db, 'typeOrder', id), { visible: !currentVisible });
-            } else {
-                await addDoc(collection(db, 'typeOrder'), { typeName, order: 999, visible: !currentVisible });
-            }
-            await fetchTypeOrders();
-        } catch (error) {
-            console.error("Error toggling type visibility: ", error);
-        }
-    };
-
-    const deleteTypeOrder = async (id: string) => {
-        try {
-            await deleteDoc(doc(db, 'typeOrder', id));
-            await fetchTypeOrders();
-        } catch (error) {
-            console.error("Error deleting type order: ", error);
-        }
-    };
-
-    // ============ CACHE SETTINGS FUNCTIONS ============
-    const fetchCacheSettings = async () => {
-        try {
-            const docRef = doc(db, 'settings', 'cache');
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                setCacheEnabled(docSnap.data().enabled || false);
-                setCacheDurationHours(docSnap.data().durationHours || 24);
-            }
-            // Fetch work page settings
-            const workSettingsRef = doc(db, 'settings', 'workPage');
-            const workSettingsSnap = await getDoc(workSettingsRef);
-            if (workSettingsSnap.exists()) {
-                setShowCardContent(workSettingsSnap.data().showCardContent !== false);
-            }
-            const age = getCacheAgeHours();
-            setCacheAge(age);
-        } catch (error) {
-            console.error("Error fetching cache settings: ", error);
-        }
-    };
-
-    const toggleCacheEnabled = async () => {
-        try {
-            const newValue = !cacheEnabled;
-            const docRef = doc(db, 'settings', 'cache');
-            await setDoc(docRef, { enabled: newValue }, { merge: true });
-            setCacheEnabled(newValue);
-        } catch (error) {
-            console.error("Error toggling cache: ", error);
-        }
-    };
-
-    const toggleShowCardContent = async () => {
-        try {
-            const newValue = !showCardContent;
-            const docRef = doc(db, 'settings', 'workPage');
-            await setDoc(docRef, { showCardContent: newValue }, { merge: true });
-            setShowCardContent(newValue);
-        } catch (error) {
-            console.error("Error toggling card content: ", error);
-        }
-    };
-
-    const saveCacheDuration = async (hours: number) => {
-        try {
-            const docRef = doc(db, 'settings', 'cache');
-            await setDoc(docRef, { durationHours: hours }, { merge: true });
-            setCacheDurationHours(hours);
-        } catch (error) {
-            console.error("Error saving cache duration: ", error);
-        }
-    };
-
-    const handleClearCache = () => {
-        if (confirm('Clear all cached data for visitors?')) {
-            clearDataCache();
-            setCacheAge(null);
-            alert('Local cache cleared!');
-        }
-    };
-
-    // ============ EMAIL SETTINGS FUNCTIONS ============
-    const fetchEmailSettings = async () => {
-        try {
-            const docRef = doc(db, 'settings', 'email');
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                setEmailEnabled(docSnap.data().enabled !== false);
-                setEmailApiUrl(docSnap.data().apiUrl || '');
-            }
-        } catch (error) {
-            console.error("Error fetching email settings: ", error);
-        }
-    };
-
-    const toggleEmailEnabled = async () => {
-        try {
-            const newValue = !emailEnabled;
-            const docRef = doc(db, 'settings', 'email');
-            await setDoc(docRef, { enabled: newValue }, { merge: true });
-            setEmailEnabled(newValue);
-        } catch (error) {
-            console.error("Error toggling email: ", error);
-        }
-    };
-
-    const saveEmailApiUrl = async (url: string) => {
-        try {
-            const docRef = doc(db, 'settings', 'email');
-            await setDoc(docRef, { apiUrl: url }, { merge: true });
-            setEmailApiUrl(url);
-        } catch (error) {
-            console.error("Error saving email API URL: ", error);
-        }
-    };
 
     // ============ CONTACT SUBMISSIONS FUNCTIONS ============
     const fetchContactSubmissions = async () => {
         setSubmissionsLoading(true);
+        setSubmissionsError(null);
         try {
             const q = query(collection(db, 'contactSubmissions'), orderBy('submittedAt', 'desc'));
-            const querySnapshot = await getDocs(q);
+            let querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                console.log("No ordered submissions found, trying unordered fetch...");
+                const fallbackQ = collection(db, 'contactSubmissions');
+                querySnapshot = await getDocs(fallbackQ);
+            }
+
             const data: ContactSubmission[] = querySnapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             } as ContactSubmission));
+
+            // Sort in memory if we fell back
+            if (data.length > 0 && !data[0].submittedAt) { // heuristic check
+                // timestamps might be strings or objects, complex to sort without proper types, 
+                // but basic array reverse might mimic desc order if inserted sequentially
+                data.reverse();
+            }
+
             setContactSubmissions(data);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error fetching contact submissions: ", error);
+            setSubmissionsError(error.message);
         } finally {
             setSubmissionsLoading(false);
         }
@@ -907,6 +773,212 @@ const Admin: React.FC = () => {
                 console.error("Error deleting submission: ", error);
             }
         }
+    };
+
+    // ============ ASSETS FUNCTIONS ============
+    const fetchAssets = async () => {
+        setAssetsLoading(true);
+        setAssetsError(null);
+        try {
+            console.log("Fetching assets...");
+            const q = query(collection(db, 'assets'), orderBy('order', 'asc'));
+            let querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                console.log("No ordered assets found, trying unordered fetch...");
+                const fallbackQ = collection(db, 'assets');
+                querySnapshot = await getDocs(fallbackQ);
+            }
+
+            console.log(`Found ${querySnapshot.size} assets`);
+            const data: Asset[] = querySnapshot.docs.map(doc => {
+                const d = doc.data();
+                return {
+                    id: doc.id,
+                    title: d.title || '',
+                    description: d.description || '',
+                    category: d.category || 'free',
+                    type: d.type || '',
+                    price: d.price || '',
+                    imageUrl: d.imageUrl || '',
+                    downloadLink: d.downloadLink || '',
+                    order: d.order || 0
+                } as Asset;
+            });
+            // If we fell back to unordered, sort them in memory
+            if (data.length > 0 && data[0].order === 0) {
+                data.sort((a, b) => (a.order || 0) - (b.order || 0));
+            }
+            setAssets(data);
+        } catch (error: any) {
+            console.error("Error fetching assets: ", error);
+            setAssetsError(error.message);
+        } finally {
+            setAssetsLoading(false);
+        }
+    };
+
+    const resetAssetForm = () => {
+        setAssetFormData({
+            title: '',
+            description: '',
+            category: 'free',
+            type: '',
+            price: '',
+            imageUrl: '',
+            downloadLink: '',
+            order: 0
+        });
+        setAssetEditingId(null);
+    };
+
+    const handleAssetSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setAssetsLoading(true);
+
+        try {
+            if (assetEditingId) {
+                const assetRef = doc(db, 'assets', assetEditingId);
+                await updateDoc(assetRef, assetFormData);
+            } else {
+                await addDoc(collection(db, 'assets'), assetFormData);
+            }
+            await fetchAssets();
+            resetAssetForm();
+        } catch (error) {
+            console.error("Error saving asset: ", error);
+            alert("Error saving asset");
+        } finally {
+            setAssetsLoading(false);
+        }
+    };
+
+    const handleAssetEdit = (asset: Asset) => {
+        setAssetEditingId(asset.id);
+        setAssetFormData({
+            title: asset.title,
+            description: asset.description,
+            category: asset.category,
+            type: asset.type || '',
+            price: asset.price || '',
+            imageUrl: asset.imageUrl || '',
+            downloadLink: asset.downloadLink || '',
+            order: asset.order
+        });
+        window.scrollTo(0, 0);
+    };
+
+    const handleAssetDelete = async (id: string) => {
+        if (confirm('Are you sure you want to delete this asset?')) {
+            if (confirm('This action cannot be undone. Click OK again to confirm deletion.')) {
+                setAssetsLoading(true);
+                try {
+                    await deleteDoc(doc(db, 'assets', id));
+                    await fetchAssets();
+                } catch (error) {
+                    console.error("Error deleting asset: ", error);
+                } finally {
+                    setAssetsLoading(false);
+                }
+            }
+        }
+    };
+
+    const downloadAssetsSampleExcel = () => {
+        const sampleData = [
+            { Title: 'Cinematic LUTs Starter', Description: '5 basic LUTs for Sony & Canon log footage.', Category: 'free', Type: 'LUTs', Price: '', ImageUrl: '', DownloadLink: 'https://example.com/luts.zip', Order: 1 },
+            { Title: 'Ultimate Thumbnail Pack', Description: '20+ PSD Templates for high CTR.', Category: 'featured', Type: 'Templates', Price: '$29', ImageUrl: 'https://example.com/thumbnail.jpg', DownloadLink: 'https://example.com/buy/thumbnails', Order: 1 },
+            { Title: 'The Creator Master Bundle', Description: 'Everything I use: Presets, SFX, Graphics.', Category: 'premium', Type: 'Bundle', Price: '$99', ImageUrl: '', DownloadLink: 'https://example.com/buy/bundle', Order: 1 }
+        ];
+        const worksheet = XLSX.utils.json_to_sheet(sampleData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Assets');
+        XLSX.writeFile(workbook, 'sample_assets_template.xlsx');
+    };
+
+    const downloadAllAssetsExcel = () => {
+        if (assets.length === 0) {
+            alert('No assets to export!');
+            return;
+        }
+        const exportData = assets.map(a => ({
+            Title: a.title,
+            Description: a.description,
+            Category: a.category,
+            Type: a.type || '',
+            Price: a.price || '',
+            ImageUrl: a.imageUrl || '',
+            DownloadLink: a.downloadLink || '',
+            Order: a.order
+        }));
+        const worksheet = XLSX.utils.json_to_sheet(exportData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Assets');
+        XLSX.writeFile(workbook, 'all_assets_export.xlsx');
+    };
+
+    const handleAssetExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            try {
+                const data = new Uint8Array(event.target?.result as ArrayBuffer);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
+
+                if (jsonData.length === 0) {
+                    alert('No data found in Excel file');
+                    return;
+                }
+
+                const requiredFields = ['Title', 'Description', 'Category'];
+                const hasRequiredFields = requiredFields.every(field =>
+                    jsonData[0].hasOwnProperty(field)
+                );
+
+                if (!hasRequiredFields) {
+                    alert(`Excel file must contain these columns: ${requiredFields.join(', ')}, Type, Price, ImageUrl, DownloadLink, Order`);
+                    return;
+                }
+
+                if (confirm(`Found ${jsonData.length} assets. Import all?`)) {
+                    setAssetsLoading(true);
+                    const batch = writeBatch(db);
+
+                    jsonData.forEach((row) => {
+                        const assetRef = doc(collection(db, 'assets'));
+                        const assetData: Omit<Asset, 'id'> = {
+                            title: String(row.Title || ''),
+                            description: String(row.Description || ''),
+                            category: (row.Category as 'free' | 'featured' | 'premium') || 'free',
+                            type: String(row.Type || ''),
+                            price: String(row.Price || ''),
+                            imageUrl: String(row.ImageUrl || ''),
+                            downloadLink: String(row.DownloadLink || ''),
+                            order: Number(row.Order) || 0
+                        };
+                        batch.set(assetRef, assetData);
+                    });
+
+                    await batch.commit();
+                    await fetchAssets();
+                    alert(`Successfully imported ${jsonData.length} assets!`);
+                } else {
+                    alert('Import cancelled');
+                }
+            } catch (error) {
+                console.error("Error importing Excel: ", error);
+                alert("Error importing Excel file");
+            } finally {
+                setAssetsLoading(false);
+                e.target.value = '';
+            }
+        };
+        reader.readAsArrayBuffer(file);
     };
 
     // ============ CONTENT FUNCTIONS ============
@@ -1076,6 +1148,16 @@ const Admin: React.FC = () => {
                         {sidebarOpen && <span>Content</span>}
                     </button>
                     <button
+                        onClick={() => setActiveTab('assets')}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeTab === 'assets'
+                            ? 'bg-[#9B5CFF] text-white'
+                            : 'text-gray-400 hover:bg-[#222] hover:text-white'
+                            }`}
+                    >
+                        <Package size={20} />
+                        {sidebarOpen && <span>Assets</span>}
+                    </button>
+                    <button
                         onClick={() => setActiveTab('messages')}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeTab === 'messages'
                             ? 'bg-[#9B5CFF] text-white'
@@ -1089,6 +1171,16 @@ const Admin: React.FC = () => {
                                 {contactSubmissions.length}
                             </span>
                         )}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('purchases')}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeTab === 'purchases'
+                            ? 'bg-[#9B5CFF] text-white'
+                            : 'text-gray-400 hover:bg-[#222] hover:text-white'
+                            }`}
+                    >
+                        <Download size={20} />
+                        {sidebarOpen && <span>Purchases</span>}
                     </button>
                 </nav>
 
@@ -1851,218 +1943,7 @@ const Admin: React.FC = () => {
 
                     {/* ============ SETTINGS TAB ============ */}
                     {activeTab === 'settings' && (
-                        <>
-                            <div className="flex justify-between items-center mb-8">
-                                <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-                                    Settings
-                                </h1>
-                            </div>
-
-                            {/* Type Ordering Section */}
-                            <div className="bg-[#111] p-6 rounded-xl border border-[#222] mb-8">
-                                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                                    <ArrowUp size={20} />
-                                    Type Display Order
-                                </h2>
-                                <p className="text-gray-400 text-sm mb-4">
-                                    Set the display order of project types in the Work page. Lower numbers appear first.
-                                </p>
-
-                                <div className="space-y-3">
-                                    {allProjectTypes.map(typeName => {
-                                        const existing = typeOrders.find(t => t.typeName === typeName);
-                                        const isVisible = existing?.visible !== false;
-                                        return (
-                                            <div key={typeName} className={`flex items-center gap-4 bg-[#0a0a0a] p-3 rounded-lg ${!isVisible ? 'opacity-50' : ''}`}>
-                                                {/* Visibility Toggle */}
-                                                <button
-                                                    onClick={() => toggleTypeVisibility(typeName, isVisible, existing?.id)}
-                                                    className={`w-12 h-6 rounded-full transition-colors flex-shrink-0 ${isVisible ? 'bg-[#9B5CFF]' : 'bg-[#333]'}`}
-                                                    title={isVisible ? 'Visible on Work page' : 'Hidden from Work page'}
-                                                >
-                                                    <div className={`w-4 h-4 bg-white rounded-full transition-transform ${isVisible ? 'translate-x-7' : 'translate-x-1'}`} />
-                                                </button>
-                                                <span className="flex-1 font-medium">{typeName}</span>
-                                                <input
-                                                    type="number"
-                                                    placeholder="Order"
-                                                    defaultValue={existing?.order || 0}
-                                                    className="w-20 bg-[#070707] border border-[#333] rounded p-2 text-center"
-                                                    onBlur={(e) => {
-                                                        const order = parseInt(e.target.value) || 0;
-                                                        saveTypeOrder(typeName, order, isVisible, existing?.id);
-                                                    }}
-                                                />
-                                                {existing && (
-                                                    <button
-                                                        onClick={() => deleteTypeOrder(existing.id!)}
-                                                        className="p-2 bg-red-900/20 text-red-500 rounded hover:bg-red-900/40"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                                {typeOrderLoading && <p className="text-gray-500 mt-2">Loading...</p>}
-                            </div>
-
-                            {/* Work Page Settings Section */}
-                            <div className="bg-[#111] p-6 rounded-xl border border-[#222] mb-8">
-                                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                                    <Briefcase size={20} />
-                                    Work Page Settings
-                                </h2>
-                                <p className="text-gray-400 text-sm mb-4">
-                                    Control the display of project cards on the Work page.
-                                </p>
-
-                                <div className="space-y-4">
-                                    {/* Show Card Content Toggle */}
-                                    <div className="flex items-center justify-between bg-[#0a0a0a] p-4 rounded-lg">
-                                        <div>
-                                            <span className="font-medium">Show Card Content</span>
-                                            <p className="text-gray-500 text-sm">Display title, description, and tools below the video/image</p>
-                                        </div>
-                                        <button
-                                            onClick={toggleShowCardContent}
-                                            className={`w-14 h-7 rounded-full transition-colors ${showCardContent ? 'bg-[#9B5CFF]' : 'bg-[#333]'}`}
-                                        >
-                                            <div className={`w-5 h-5 bg-white rounded-full transition-transform ${showCardContent ? 'translate-x-8' : 'translate-x-1'}`} />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Cache Settings Section */}
-                            <div className="bg-[#111] p-6 rounded-xl border border-[#222] mb-8">
-                                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                                    <Database size={20} />
-                                    Cache Settings
-                                </h2>
-                                <p className="text-gray-400 text-sm mb-4">
-                                    Cache media files on users' browsers for faster loading.
-                                </p>
-
-                                <div className="space-y-4">
-                                    {/* Toggle */}
-                                    <div className="flex items-center justify-between bg-[#0a0a0a] p-4 rounded-lg">
-                                        <div>
-                                            <span className="font-medium">Enable Caching</span>
-                                            <p className="text-gray-500 text-sm">Store files locally for faster access</p>
-                                        </div>
-                                        <button
-                                            onClick={toggleCacheEnabled}
-                                            className={`w-14 h-7 rounded-full transition-colors ${cacheEnabled ? 'bg-[#9B5CFF]' : 'bg-[#333]'}`}
-                                        >
-                                            <div className={`w-5 h-5 bg-white rounded-full transition-transform ${cacheEnabled ? 'translate-x-8' : 'translate-x-1'}`} />
-                                        </button>
-                                    </div>
-
-                                    {/* Cache Duration */}
-                                    <div className="flex items-center justify-between bg-[#0a0a0a] p-4 rounded-lg">
-                                        <div>
-                                            <span className="font-medium">Cache Duration</span>
-                                            <p className="text-gray-500 text-sm">How long to keep cached data (in hours)</p>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <input
-                                                type="number"
-                                                value={cacheDurationHours}
-                                                onChange={(e) => setCacheDurationHours(parseInt(e.target.value) || 24)}
-                                                onBlur={(e) => saveCacheDuration(parseInt(e.target.value) || 24)}
-                                                className="w-20 bg-[#070707] border border-[#333] rounded p-2 text-center"
-                                                min="1"
-                                            />
-                                            <span className="text-gray-500">hours</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Cache Info */}
-                                    <div className="bg-[#0a0a0a] p-4 rounded-lg">
-                                        <span className="text-gray-400">Local Cache Status:</span>
-                                        <div className="mt-2">
-                                            {cacheAge !== null ? (
-                                                <p className="text-sm">
-                                                    Cache age: <span className="font-bold text-white">{cacheAge} hours</span>
-                                                    {cacheAge > cacheDurationHours && (
-                                                        <span className="text-yellow-500 ml-2">(expired - will refresh on next visit)</span>
-                                                    )}
-                                                </p>
-                                            ) : (
-                                                <p className="text-sm text-gray-500">No cache exists yet</p>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Actions */}
-                                    <div className="flex gap-4">
-                                        <button
-                                            onClick={handleClearCache}
-                                            className="flex items-center gap-2 bg-red-900/20 text-red-500 px-4 py-2 rounded hover:bg-red-900/40"
-                                        >
-                                            <Trash2 size={16} />
-                                            Clear Local Cache
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Email Settings Section */}
-                            <div className="bg-[#111] p-6 rounded-xl border border-[#222] mb-8">
-                                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                                    <Mail size={20} />
-                                    Email Settings
-                                </h2>
-                                <p className="text-gray-400 text-sm mb-4">
-                                    Configure email notifications for contact form submissions.
-                                </p>
-
-                                <div className="space-y-4">
-                                    {/* Toggle */}
-                                    <div className="flex items-center justify-between bg-[#0a0a0a] p-4 rounded-lg">
-                                        <div>
-                                            <span className="font-medium">Enable Email Notifications</span>
-                                            <p className="text-gray-500 text-sm">Send emails when contact form is submitted</p>
-                                        </div>
-                                        <button
-                                            onClick={toggleEmailEnabled}
-                                            className={`w-14 h-7 rounded-full transition-colors ${emailEnabled ? 'bg-[#9B5CFF]' : 'bg-[#333]'}`}
-                                        >
-                                            <div className={`w-5 h-5 bg-white rounded-full transition-transform ${emailEnabled ? 'translate-x-8' : 'translate-x-1'}`} />
-                                        </button>
-                                    </div>
-
-                                    {/* API URL */}
-                                    <div className="bg-[#0a0a0a] p-4 rounded-lg">
-                                        <div className="mb-2">
-                                            <span className="font-medium">API Endpoint URL</span>
-                                            <p className="text-gray-500 text-sm">Leave blank to use default backend</p>
-                                        </div>
-                                        <input
-                                            type="url"
-                                            value={emailApiUrl}
-                                            onChange={(e) => setEmailApiUrl(e.target.value)}
-                                            onBlur={(e) => saveEmailApiUrl(e.target.value)}
-                                            placeholder="https://your-backend.com/api/contact"
-                                            className="w-full bg-[#070707] border border-[#333] rounded p-2 text-sm"
-                                        />
-                                    </div>
-
-                                    {/* Status Info */}
-                                    <div className="bg-[#0a0a0a] p-4 rounded-lg">
-                                        <span className="text-gray-400">Current Status:</span>
-                                        <div className="mt-2 flex items-center gap-2">
-                                            <span className={`w-2 h-2 rounded-full ${emailEnabled ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                                            <span className={`text-sm ${emailEnabled ? 'text-green-400' : 'text-red-400'}`}>
-                                                {emailEnabled ? 'Emails are enabled' : 'Emails are disabled'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </>
+                        <SettingsTab allProjectTypes={allProjectTypes} />
                     )}
 
                     {/* ============ CONTENT TAB ============ */}
@@ -3322,10 +3203,18 @@ const Admin: React.FC = () => {
                                 <div className="flex justify-center py-12">
                                     <Loader2 className="animate-spin" size={32} />
                                 </div>
-                            ) : contactSubmissions.length === 0 ? (
-                                <div className="text-center py-12 text-gray-400">
-                                    <Mail size={48} className="mx-auto mb-4 opacity-50" />
-                                    <p>No contact form submissions yet.</p>
+                            ) : submissionsError && (
+                                <div className="bg-red-900/20 border border-red-900/50 text-red-500 p-4 rounded-lg mb-6 text-center">
+                                    <p className="font-bold">Error loading messages:</p>
+                                    <p>{submissionsError}</p>
+                                    <p className="text-sm mt-2 opacity-80">This usually happens if the Firestore index is missing. Check the console for a link to create the index.</p>
+                                </div>
+                            )}
+
+                            {!submissionsError && contactSubmissions.length === 0 ? (
+                                <div className="text-center py-20 text-gray-500">
+                                    <MessageSquare size={48} className="mx-auto mb-4 opacity-50" />
+                                    <p>No messages yet.</p>
                                 </div>
                             ) : (
                                 <div className="bg-[#111] rounded-lg border border-[#222] overflow-hidden">
@@ -3449,6 +3338,260 @@ const Admin: React.FC = () => {
                                 </div>
                             )}
                         </div>
+                    )}
+
+                    {/* ============ ASSETS TAB ============ */}
+                    {activeTab === 'assets' && (
+                        <div className="space-y-6">
+                            <div className="flex justify-between items-center">
+                                <h2 className="text-2xl font-bold flex items-center gap-3">
+                                    <Package size={28} />
+                                    Asset Management
+                                </h2>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={downloadAssetsSampleExcel}
+                                        className="flex items-center gap-2 px-4 py-2 bg-[#222] rounded-lg hover:bg-[#333] transition-colors"
+                                    >
+                                        <FileSpreadsheet size={16} />
+                                        Template
+                                    </button>
+                                    <label className="flex items-center gap-2 px-4 py-2 bg-[#222] rounded-lg hover:bg-[#333] transition-colors cursor-pointer">
+                                        <Upload size={16} />
+                                        Import
+                                        <input
+                                            type="file"
+                                            accept=".xlsx,.xls"
+                                            onChange={handleAssetExcelUpload}
+                                            className="hidden"
+                                        />
+                                    </label>
+                                    <button
+                                        onClick={downloadAllAssetsExcel}
+                                        disabled={assets.length === 0}
+                                        className="flex items-center gap-2 px-4 py-2 bg-[#222] rounded-lg hover:bg-[#333] transition-colors disabled:opacity-50"
+                                    >
+                                        <Database size={16} />
+                                        Export
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="bg-[#111] p-6 rounded-xl border border-[#222]">
+                                <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                                    {assetEditingId ? <Edit2 size={20} /> : <Plus size={20} />}
+                                    {assetEditingId ? 'Edit Asset' : 'Add New Asset'}
+                                </h2>
+
+                                <form onSubmit={handleAssetSubmit} className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-1">Title *</label>
+                                            <input
+                                                type="text"
+                                                required
+                                                value={assetFormData.title}
+                                                onChange={e => setAssetFormData({ ...assetFormData, title: e.target.value })}
+                                                className="w-full bg-[#070707] border border-[#333] rounded p-2 focus:border-[#9B5CFF] outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-1">Category *</label>
+                                            <select
+                                                value={assetFormData.category}
+                                                onChange={e => setAssetFormData({ ...assetFormData, category: e.target.value as Asset['category'] })}
+                                                className="w-full bg-[#070707] border border-[#333] rounded p-2 focus:border-[#9B5CFF] outline-none"
+                                            >
+                                                <option value="free">Free</option>
+                                                <option value="featured">Featured</option>
+                                                <option value="premium">Premium</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-1">Type (e.g., LUTs, SFX)</label>
+                                            <input
+                                                type="text"
+                                                value={assetFormData.type}
+                                                onChange={e => setAssetFormData({ ...assetFormData, type: e.target.value })}
+                                                className="w-full bg-[#070707] border border-[#333] rounded p-2 focus:border-[#9B5CFF] outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-1">Price</label>
+                                            <input
+                                                type="text"
+                                                value={assetFormData.price}
+                                                onChange={e => setAssetFormData({ ...assetFormData, price: e.target.value })}
+                                                placeholder="$29"
+                                                className="w-full bg-[#070707] border border-[#333] rounded p-2 focus:border-[#9B5CFF] outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-1">Image URL</label>
+                                            <input
+                                                type="text"
+                                                value={assetFormData.imageUrl}
+                                                onChange={e => setAssetFormData({ ...assetFormData, imageUrl: e.target.value })}
+                                                placeholder="https://example.com/image.jpg"
+                                                className="w-full bg-[#070707] border border-[#333] rounded p-2 focus:border-[#9B5CFF] outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-1">Download/Buy Link</label>
+                                            <input
+                                                type="text"
+                                                value={assetFormData.downloadLink}
+                                                onChange={e => setAssetFormData({ ...assetFormData, downloadLink: e.target.value })}
+                                                placeholder="https://example.com/download"
+                                                className="w-full bg-[#070707] border border-[#333] rounded p-2 focus:border-[#9B5CFF] outline-none"
+                                            />
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <label className="block text-sm text-gray-400 mb-1">Description</label>
+                                            <textarea
+                                                value={assetFormData.description}
+                                                onChange={e => setAssetFormData({ ...assetFormData, description: e.target.value })}
+                                                rows={3}
+                                                placeholder="Brief description (optional)"
+                                                className="w-full bg-[#070707] border border-[#333] rounded p-2 focus:border-[#9B5CFF] outline-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm text-gray-400 mb-1">Order</label>
+                                            <input
+                                                type="number"
+                                                value={assetFormData.order}
+                                                onChange={e => setAssetFormData({ ...assetFormData, order: parseInt(e.target.value) || 0 })}
+                                                className="w-full bg-[#070707] border border-[#333] rounded p-2 focus:border-[#9B5CFF] outline-none"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-3 pt-2">
+                                        <button
+                                            type="submit"
+                                            disabled={assetsLoading}
+                                            className="flex items-center gap-2 px-6 py-2 bg-[#9B5CFF] rounded-lg hover:bg-[#8A4BEF] transition-colors disabled:opacity-50"
+                                        >
+                                            {assetsLoading ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                                            {assetEditingId ? 'Update' : 'Add Asset'}
+                                        </button>
+                                        {assetEditingId && (
+                                            <button
+                                                type="button"
+                                                onClick={resetAssetForm}
+                                                className="flex items-center gap-2 px-6 py-2 bg-[#333] rounded-lg hover:bg-[#444] transition-colors"
+                                            >
+                                                <X size={16} />
+                                                Cancel
+                                            </button>
+                                        )}
+                                    </div>
+                                </form>
+                            </div>
+
+                            {assetsLoading && !assetEditingId ? (
+                                <div className="flex justify-center py-12">
+                                    <Loader2 className="animate-spin" size={32} />
+                                </div>
+                            ) : (
+                                <>
+                                    {['featured', 'free', 'premium'].map(category => {
+                                        const categoryAssets = assets.filter(a => a.category === category);
+                                        if (categoryAssets.length === 0) return null;
+
+                                        return (
+                                            <div key={category} className="mb-8">
+                                                <h3 className="text-xl font-bold mb-4 capitalize flex items-center gap-2">
+                                                    {category === 'featured' && <Star size={20} className="text-yellow-500" />}
+                                                    {category} Assets ({categoryAssets.length})
+                                                </h3>
+                                                <div className="grid gap-4">
+                                                    {categoryAssets.map((asset) => (
+                                                        <div
+                                                            key={asset.id}
+                                                            className="bg-[#111] p-5 rounded-xl border border-[#222] hover:border-[#333] transition-all"
+                                                        >
+                                                            <div className="flex items-start justify-between gap-4">
+                                                                <div className="flex-1">
+                                                                    <div className="flex items-center gap-3 mb-2 flex-wrap">
+                                                                        <h4 className="font-semibold text-lg">{asset.title}</h4>
+                                                                        {asset.price && (
+                                                                            <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-sm">
+                                                                                {asset.price}
+                                                                            </span>
+                                                                        )}
+                                                                        {asset.type && (
+                                                                            <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs">
+                                                                                {asset.type}
+                                                                            </span>
+                                                                        )}
+                                                                        <span className="px-2 py-1 bg-gray-500/20 text-gray-400 rounded text-xs">
+                                                                            Order: {asset.order}
+                                                                        </span>
+                                                                    </div>
+                                                                    <p className="text-gray-400 text-sm mb-2">{asset.description}</p>
+                                                                    <div className="flex flex-col gap-1 text-xs text-gray-500">
+                                                                        {asset.downloadLink && (
+                                                                            <span>
+                                                                                Link: <a href={asset.downloadLink} target="_blank" rel="noopener noreferrer" className="text-[#9B5CFF] hover:underline">
+                                                                                    {asset.downloadLink.slice(0, 50)}...
+                                                                                </a>
+                                                                            </span>
+                                                                        )}
+                                                                        {asset.imageUrl && (
+                                                                            <span>
+                                                                                Image: <a href={asset.imageUrl} target="_blank" rel="noopener noreferrer" className="text-[#9B5CFF] hover:underline">
+                                                                                    {asset.imageUrl.slice(0, 50)}...
+                                                                                </a>
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex gap-2">
+                                                                    <button
+                                                                        onClick={() => handleAssetEdit(asset)}
+                                                                        className="p-2 bg-blue-500/20 hover:bg-blue-500/30 rounded transition-colors"
+                                                                    >
+                                                                        <Edit2 size={16} className="text-blue-400" />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handleAssetDelete(asset.id)}
+                                                                        className="p-2 bg-red-500/20 hover:bg-red-500/30 rounded transition-colors"
+                                                                    >
+                                                                        <Trash2 size={16} className="text-red-400" />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+
+                                    {assetsError && (
+                                        <div className="bg-red-900/20 border border-red-900/50 text-red-500 p-4 rounded-lg mb-6 text-center">
+                                            <p className="font-bold">Error loading assets:</p>
+                                            <p>{assetsError}</p>
+                                            <p className="text-sm mt-2 opacity-80">This usually happens if the Firestore index is missing. Check the console for a link to create the index.</p>
+                                        </div>
+                                    )}
+
+                                    {!assetsError && assets.length === 0 && (
+                                        <div className="text-center py-12 text-gray-400">
+                                            <Package size={48} className="mx-auto mb-4 opacity-50" />
+                                            <p>No assets found. Add your first asset above!</p>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    )}
+
+                    {/* ============ PURCHASES TAB ============ */}
+                    {activeTab === 'purchases' && (
+                        <PurchasesTab />
                     )}
                 </div>
             </main>
