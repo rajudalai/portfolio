@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import { SEO } from '../components/SEO';
-import { redirectToPaymentPage } from '../utils/razorpayUtils';
+import { initiatePayment } from '../utils/razorpayUtils';
 import { copyToClipboard, formatReceiptUrl } from '../utils/purchaseUtils';
 
 // Assets will be fetched from Firebase
@@ -141,8 +141,8 @@ const Assets: React.FC = () => {
     };
 
     /**
-     * Redirects to Razorpay Payment Page
-     * Simpler approach: No modal, direct redirect to Payment Page
+     * Initiates Razorpay payment using cloud functions
+     * Opens Razorpay checkout modal, creates order on backend, verifies payment
      */
     const handleCompletePurchase = async () => {
         if (!purchaseModal.asset) return;
@@ -150,19 +150,32 @@ const Assets: React.FC = () => {
         setPurchaseModal(prev => ({ ...prev, isProcessing: true, error: null }));
 
         try {
-            // Redirect to Razorpay Payment Page
-            // Payment Page is pre-created in Razorpay Dashboard with fixed price
-            await redirectToPaymentPage(purchaseModal.asset.id);
+            // Initiate payment - this will:
+            // 1. Call createOrder cloud function (fetches price from database)
+            // 2. Open Razorpay checkout modal
+            // 3. Verify payment on backend after user completes payment
+            // 4. Return receipt ID
+            const receiptId = await initiatePayment(purchaseModal.asset.id);
 
-            // User will be redirected away from this page
-            // After payment, Razorpay sends webhook to create purchase record
-            // User is redirected back to success page
-        } catch (error: any) {
-            console.error('Error redirecting to payment:', error);
+            // Payment successful and verified!
             setPurchaseModal(prev => ({
                 ...prev,
                 isProcessing: false,
-                error: error.message || 'Failed to start payment process. Please try again.',
+                isComplete: true,
+                receiptId,
+            }));
+        } catch (error: any) {
+            console.error('Error processing payment:', error);
+
+            // Check if user cancelled payment
+            const isCancelled = error.message.includes('cancelled');
+
+            setPurchaseModal(prev => ({
+                ...prev,
+                isProcessing: false,
+                error: isCancelled
+                    ? 'Payment was cancelled. You can try again when ready.'
+                    : error.message || 'Failed to process payment. Please try again.',
             }));
         }
     };

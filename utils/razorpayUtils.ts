@@ -1,204 +1,199 @@
 /**
- * Razorpay Payment Pages Integration
+ * Razorpay Payment Integration
  * 
- * Uses Razorpay Payment Pages (reusable, customizable payment pages) instead
- * of dynamic order creation. This approach is simpler - no complex backend needed,
- * just one webhook function to handle payment verification.
- * 
- * Security: Payment Pages are created in Razorpay Dashboard with fixed prices,
- * so users cannot manipulate prices. Webhooks verify payment authenticity.
+ * Uses Razorpay Standard Checkout with Firebase Cloud Functions backend.
+ * Security: Prices are fetched from database by cloud functions, not from frontend.
  */
 
-import { db } from '../firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+
+// Razorpay Checkout script loader
+let razorpayScriptLoaded = false;
 
 /**
- * Payment Page configuration stored in Firestore
+ * Dynamically loads the Razorpay checkout script
+ * Only loads once per session
  */
-export interface PaymentPageConfig {
-    pageId: string;
-    pageUrl: string;
+async function loadRazorpayScript(): Promise<boolean> {
+    if (razorpayScriptLoaded) {
+        return true;
+    }
+
+    return new Promise((resolve) => {
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.onload = () => {
+            razorpayScriptLoaded = true;
+            resolve(true);
+        };
+        script.onerror = () => {
+            console.error('Failed to load Razorpay SDK');
+            resolve(false);
+        };
+        document.body.appendChild(script);
+    });
+}
+
+/**
+ * Order creation response from cloud function
+ */
+interface OrderResponse {
+    orderId: string;
+    amount: number;
+    currency: string;
     assetId: string;
     assetTitle: string;
-    price: string;
 }
 
 /**
- * Generates a unique receipt ID for purchase tracking
+ * Payment verification response from cloud function
  */
-function generateReceiptId(): string {
-    const timestamp = Date.now().toString(36).toUpperCase();
-    const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
-    return `RCP-${timestamp}-${randomPart}`;
+interface PaymentVerificationResponse {
+    success: boolean;
+    receiptId: string;
+    purchaseId: string;
+    downloadLink?: string;
 }
 
 /**
- * Redirects user to Razorpay Payment Page for an asset
- * 
- * This approach is simpler than creating orders programmatically:
- * 1. Payment Page is pre-created in Razorpay Dashboard
- * 2. User clicks "Buy Now" → Redirects to Payment Page URL
- * 3. User completes payment on Razorpay's hosted page
- * 4. Razorpay sends webhook to our backend
- * 5. Backend creates purchase record in Firestore
- * 6. User is redirected back to success page with receipt ID
- * 
- * @param assetId - The ID of the asset being purchased
- * @param buyerEmail - Optional email to pre-fill
- * @returns Promise that resolves when redirect is initiated
+ * Razorpay payment response
  */
-export async function redirectToPaymentPage(
+interface RazorpayResponse {
+    razorpay_payment_id: string;
+    razorpay_order_id: string;
+    razorpay_signature: string;
+}
+
+/**
+ * Initiates Razorpay payment for an asset
+ * 
+ * Flow:
+ * 1. Load Razorpay SDK
+ * 2. Call createOrder cloud function (fetches price from database)
+ * 3. Open Razorpay checkout modal
+ * 4. On payment success, call verifyPayment cloud function
+ * 5. Return receipt ID on successful verification
+ * 
+ * @param assetId - The ID of the asset to purchase
+ * @param buyerEmail - Optional buyer email for pre-fill
+ * @returns Receipt ID on successful payment
+ */
+export async function initiatePayment(
     assetId: string,
     buyerEmail?: string
-): Promise<void> {
+): Promise<string> {
     try {
-        // Fetch asset from Firestore to get its Payment Page URL
-        const assetRef = doc(db, 'assets', assetId);
-        const assetDoc = await (await import('firebase/firestore')).getDoc(assetRef);
-
-        if (!assetDoc.exists()) {
-            throw new Error('Asset not found');
+        // Load Razorpay SDK
+        const scriptLoaded = await loadRazorpayScript();
+        if (!scriptLoaded) {
+            throw new Error('Failed to load payment gateway. Please refresh and try again.');
         }
 
-        const assetData = assetDoc.data();
-        const paymentPageUrl = assetData.paymentPageUrl;
-
-        if (!paymentPageUrl) {
-            throw new Error('Payment Page URL not configured for this asset');
+        // Get Razorpay key from environment
+        const razorpayKeyId = import.meta.env.VITE_RAZORPAY_KEY_ID;
+        if (!razorpayKeyId) {
+            throw new Error('Payment gateway is not configured. Please contact support.');
         }
 
-        // Build the redirect URL with pre-filled data
-        const url = new URL(paymentPageUrl);
+        // Call createOrder cloud function
+        const functions = getFunctions();
+        const createOrderFunction = httpsCallable<{ assetId: string }, OrderResponse>(
+            functions,
+            'createOrder'
+        );
 
-        // Add query parameters to pre-fill customer information
-        if (buyerEmail) {
-            url.searchParams.append('email', buyerEmail);
-        }
+        console.log('Creating order for asset:', assetId);
+        const orderResult = await createOrderFunction({ assetId });
+        const orderData = orderResult.data;
 
-        // Add custom data that will be sent back via webhook
-        url.searchParams.append('asset_id', assetId);
+        console.log('Order created:', orderData.orderId);
 
-        // Redirect to Razorpay Payment Page
-        window.location.href = url.toString();
+        // Return promise to handle payment completion
+        return new Promise((resolve, reject) => {
+            const options = {
+                key: razorpayKeyId,
+                amount: orderData.amount,
+                currency: orderData.currency,
+                name: 'Raju Dalai',
+                description: orderData.assetTitle,
+                order_id: orderData.orderId,
+                prefill: {
+                    email: buyerEmail || '',
+                },
+                theme: {
+                    color: '#8A63F8', // Neon purple color
+                },
+                handler: async function (response: RazorpayResponse) {
+                    try {
+                        // Payment successful, verify on backend
+                        console.log('Payment successful, verifying...');
+
+                        const verifyPaymentFunction = httpsCallable<any, PaymentVerificationResponse>(
+                            functions,
+                            'verifyPayment'
+                        );
+
+                        const verificationResult = await verifyPaymentFunction({
+                            orderId: response.razorpay_order_id,
+                            paymentId: response.razorpay_payment_id,
+                            signature: response.razorpay_signature,
+                            assetId: orderData.assetId,
+                            buyerEmail: buyerEmail || '',
+                        });
+
+                        const verificationData = verificationResult.data;
+
+                        if (verificationData.success) {
+                            console.log('Payment verified, receipt:', verificationData.receiptId);
+                            resolve(verificationData.receiptId);
+                        } else {
+                            reject(new Error('Payment verification failed. Please contact support.'));
+                        }
+                    } catch (error: any) {
+                        console.error('Payment verification error:', error);
+                        reject(new Error(error.message || 'Payment verification failed'));
+                    }
+                },
+                modal: {
+                    ondismiss: function () {
+                        reject(new Error('Payment cancelled by user'));
+                    },
+                },
+            };
+
+            // Open Razorpay checkout
+            const razorpay = new (window as any).Razorpay(options);
+            razorpay.open();
+        });
     } catch (error: any) {
-        console.error('Error redirecting to payment page:', error);
+        console.error('Payment initiation error:', error);
         throw new Error(error.message || 'Failed to initiate payment');
     }
 }
 
 /**
- * Handles successful payment redirect from Razorpay
+ * Verifies a receipt ID and fetches purchase details
+ * Used by BoughtAccess page to validate receipts
  * 
- * After payment, Razorpay redirects user back to your success URL.
- * Extract payment details from URL parameters and show success message.
- * 
- * Note: Always verify payment on backend via webhook before granting access.
- * This function just handles the UI redirect.
- * 
- * @returns Payment details from URL parameters
+ * @param receiptId - The receipt ID to verify
+ * @returns Purchase details if valid
  */
-export function handlePaymentRedirect(): {
-    success: boolean;
-    paymentId?: string;
-    assetId?: string;
+export async function verifyReceipt(receiptId: string): Promise<{
+    valid: boolean;
+    purchase?: any;
     error?: string;
-} {
-    const urlParams = new URLSearchParams(window.location.search);
+}> {
+    try {
+        const functions = getFunctions();
+        const verifyReceiptFunction = httpsCallable(functions, 'verifyReceipt');
 
-    const paymentId = urlParams.get('razorpay_payment_id');
-    const assetId = urlParams.get('asset_id');
-
-    if (paymentId && assetId) {
+        const result = await verifyReceiptFunction({ receiptId });
+        return result.data as any;
+    } catch (error: any) {
+        console.error('Receipt verification error:', error);
         return {
-            success: true,
-            paymentId,
-            assetId,
+            valid: false,
+            error: error.message || 'Failed to verify receipt',
         };
     }
-
-    return {
-        success: false,
-        error: 'Invalid redirect parameters',
-    };
-}
-
-/**
- * Checks if a purchase exists for a given payment ID
- * Used to verify if webhook has processed the payment yet
- * 
- * @param paymentId - Razorpay payment ID
- * @returns Purchase data if exists, null otherwise
- */
-export async function checkPurchaseStatus(
-    paymentId: string
-): Promise<{ receiptId: string; verified: boolean } | null> {
-    try {
-        // Query purchases collection for this payment ID
-        const { collection, query, where, getDocs } = await import('firebase/firestore');
-
-        const purchasesRef = collection(db, 'purchases');
-        const q = query(purchasesRef, where('razorpayPaymentId', '==', paymentId));
-        const snapshot = await getDocs(q);
-
-        if (!snapshot.empty) {
-            const purchaseData = snapshot.docs[0].data();
-            return {
-                receiptId: purchaseData.receiptId,
-                verified: purchaseData.verified || false,
-            };
-        }
-
-        return null;
-    } catch (error) {
-        console.error('Error checking purchase status:', error);
-        return null;
-    }
-}
-
-/**
- * Polls for purchase verification after payment redirect
- * 
- * After payment, webhook takes a few seconds to process.
- * This function polls Firestore to check when purchase record is created.
- * 
- * @param paymentId - Razorpay payment ID
- * @param maxAttempts - Maximum number of polling attempts (default: 10)
- * @param intervalMs - Interval between attempts in ms (default: 2000)
- * @returns Receipt ID when purchase is verified
- */
-export async function waitForPurchaseVerification(
-    paymentId: string,
-    maxAttempts: number = 10,
-    intervalMs: number = 2000
-): Promise<string> {
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        const purchase = await checkPurchaseStatus(paymentId);
-
-        if (purchase && purchase.verified) {
-            return purchase.receiptId;
-        }
-
-        // Wait before next attempt
-        await new Promise(resolve => setTimeout(resolve, intervalMs));
-    }
-
-    throw new Error('Payment verification timeout. Please contact support with your payment ID.');
-}
-
-/**
- * Gets the success redirect URL for Razorpay Payment Pages
- * This is where users will be redirected after successful payment
- */
-export function getSuccessRedirectUrl(): string {
-    const baseUrl = window.location.origin;
-    return `${baseUrl}/#payment-success`;
-}
-
-/**
- * Gets the cancel redirect URL for Razorpay Payment Pages
- * This is where users will be redirected if they cancel payment
- */
-export function getCancelRedirectUrl(): string {
-    const baseUrl = window.location.origin;
-    return `${baseUrl}/#assets`;
 }

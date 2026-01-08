@@ -4,10 +4,16 @@ export interface Purchase {
   id: string;
   receiptId: string;
   assetName: string;
+  assetId: string;
   price: string;
   downloadLink: string;
   purchaseDate: string; // ISO timestamp
   buyerEmail?: string; // Optional buyer email for verification
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  razorpaySignature: string;
+  verified: boolean;
+  status: 'pending' | 'completed' | 'failed';
 }
 
 export interface Project {
