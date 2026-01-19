@@ -2,10 +2,33 @@
  * Razorpay Payment Integration
  * 
  * Uses Razorpay Standard Checkout with Firebase Cloud Functions backend.
- * Security: Prices are fetched from database by cloud functions, not from frontend.
+ * Security: Prices are fetched from database by cloud functions based on assetId.
  */
 
-import { getFunctions, httpsCallable } from 'firebase/functions';
+// Base URL for Cloud Functions (HTTP endpoints)
+// Using the production URL for the deployed functions
+const FUNCTIONS_BASE_URL = 'https://asia-south1-rajudalai-portfolio.cloudfunctions.net';
+
+/**
+ * Helper to call HTTP Cloud Function
+ */
+async function callFunction<T>(endpoint: string, body: any): Promise<T> {
+    const response = await fetch(`${FUNCTIONS_BASE_URL}/${endpoint}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.error || `Function ${endpoint} failed with status ${response.status}`);
+    }
+
+    return data as T;
+}
 
 // Razorpay Checkout script loader
 let razorpayScriptLoaded = false;
@@ -75,12 +98,12 @@ interface RazorpayResponse {
  * 5. Return receipt ID on successful verification
  * 
  * @param assetId - The ID of the asset to purchase
- * @param buyerEmail - Optional buyer email for pre-fill
+ * @param buyerEmail - Buyer email for receipt and payment notification
  * @returns Receipt ID on successful payment
  */
 export async function initiatePayment(
     assetId: string,
-    buyerEmail?: string
+    buyerEmail: string
 ): Promise<string> {
     try {
         // Load Razorpay SDK
@@ -95,16 +118,14 @@ export async function initiatePayment(
             throw new Error('Payment gateway is not configured. Please contact support.');
         }
 
-        // Call createOrder cloud function
-        const functions = getFunctions();
-        const createOrderFunction = httpsCallable<{ assetId: string }, OrderResponse>(
-            functions,
-            'createOrder'
-        );
+        // Call createOrder cloud function with buyer email
+        // Email is included so Razorpay can send payment notifications
+        console.log('Creating order for asset:', assetId, 'buyer:', buyerEmail);
+        const orderData = await callFunction<OrderResponse>('createOrder', {
+            assetId,
+            buyerEmail
+        });
 
-        console.log('Creating order for asset:', assetId);
-        const orderResult = await createOrderFunction({ assetId });
-        const orderData = orderResult.data;
 
         console.log('Order created:', orderData.orderId);
 
@@ -118,7 +139,7 @@ export async function initiatePayment(
                 description: orderData.assetTitle,
                 order_id: orderData.orderId,
                 prefill: {
-                    email: buyerEmail || '',
+                    email: buyerEmail,
                 },
                 theme: {
                     color: '#8A63F8', // Neon purple color
@@ -128,20 +149,13 @@ export async function initiatePayment(
                         // Payment successful, verify on backend
                         console.log('Payment successful, verifying...');
 
-                        const verifyPaymentFunction = httpsCallable<any, PaymentVerificationResponse>(
-                            functions,
-                            'verifyPayment'
-                        );
-
-                        const verificationResult = await verifyPaymentFunction({
+                        const verificationData = await callFunction<PaymentVerificationResponse>('verifyPayment', {
                             orderId: response.razorpay_order_id,
                             paymentId: response.razorpay_payment_id,
                             signature: response.razorpay_signature,
                             assetId: orderData.assetId,
-                            buyerEmail: buyerEmail || '',
+                            buyerEmail: buyerEmail,
                         });
-
-                        const verificationData = verificationResult.data;
 
                         if (verificationData.success) {
                             console.log('Payment verified, receipt:', verificationData.receiptId);
@@ -172,23 +186,25 @@ export async function initiatePayment(
 }
 
 /**
- * Verifies a receipt ID and fetches purchase details
- * Used by BoughtAccess page to validate receipts
+ * Verifies a receipt ID with email and fetches purchase details.
+ * Used by BoughtAccess and ReceiptDetail pages to validate receipts.
+ * Requires both receipt ID and buyer email for security verification.
  * 
  * @param receiptId - The receipt ID to verify
- * @returns Purchase details if valid
+ * @param buyerEmail - The email address used during purchase
+ * @returns Purchase details if valid, error otherwise
  */
-export async function verifyReceipt(receiptId: string): Promise<{
+export async function verifyReceipt(receiptId: string, buyerEmail: string): Promise<{
     valid: boolean;
     purchase?: any;
     error?: string;
 }> {
     try {
-        const functions = getFunctions();
-        const verifyReceiptFunction = httpsCallable(functions, 'verifyReceipt');
-
-        const result = await verifyReceiptFunction({ receiptId });
-        return result.data as any;
+        const result = await callFunction<any>('verifyReceipt', {
+            receiptId,
+            buyerEmail
+        });
+        return result;
     } catch (error: any) {
         console.error('Receipt verification error:', error);
         return {

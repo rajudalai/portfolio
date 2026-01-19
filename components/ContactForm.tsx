@@ -17,8 +17,9 @@ interface ContactContent {
   success: { title: string; message: string; backButton: string; };
 }
 
-// Default API URL - can be overridden from admin settings
-const DEFAULT_API_URL = 'http://localhost:8000/api/contact';
+// Default API URL - Uses Firebase Function endpoint for production
+// Can be overridden from admin settings in Firestore
+const DEFAULT_API_URL = 'https://asia-south1-rajudalai-portfolio.cloudfunctions.net/sendContactEmail';
 
 const ContactForm: React.FC<{ content: ContactContent }> = ({ content }) => {
   const [submitted, setSubmitted] = useState(false);

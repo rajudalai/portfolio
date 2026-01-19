@@ -374,18 +374,7 @@ const Work: React.FC = () => {
                                             <img src={work.link} alt={work.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                                         )}
                                     </div>
-                                    {showCardContent && (
-                                        <div className="p-6">
-                                            <div className="text-[10px] uppercase font-bold text-neon mb-2 tracking-wider">{work.type}</div>
-                                            <h3 className="text-xl font-bold text-white mb-2">{work.title}</h3>
-                                            <p className="text-gray-400 text-sm mb-4 line-clamp-2">{work.description}</p>
-                                            <div className="flex flex-wrap gap-2">
-                                                {work.tools.map(tag => (
-                                                    <span key={tag} className="text-[10px] px-2 py-1 bg-white/5 rounded text-gray-500">{tag}</span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
+
                                 </motion.div>
                             ))
                         ) : (
@@ -431,7 +420,7 @@ const Work: React.FC = () => {
                                 {/* Close Button */}
                                 <button
                                     onClick={() => setSelectedProject(null)}
-                                    className="absolute top-4 right-4 z-10 p-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full transition-all hover:scale-110"
+                                    className="absolute top-4 right-4 z-10 p-2 bg-black/50 hover:bg-black/70 backdrop-blur-sm rounded-full transition-all hover:scale-110 border border-white/10"
                                 >
                                     <X size={24} className="text-white" />
                                 </button>
@@ -457,34 +446,7 @@ const Work: React.FC = () => {
                                         )}
                                     </div>
 
-                                    {/* Info Section */}
-                                    <div className="lg:w-80 p-6 lg:p-8 bg-[#0a0a0a]/50 backdrop-blur-sm overflow-y-auto">
-                                        <motion.div
-                                            initial={{ opacity: 0, x: 20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            transition={{ delay: 0.2 }}
-                                        >
-                                            <div className="text-xs uppercase font-bold text-neon mb-3 tracking-widest">
-                                                {selectedProject.type}
-                                            </div>
-                                            <h2 className="text-2xl lg:text-3xl font-bold text-white mb-4">
-                                                {selectedProject.title}
-                                            </h2>
-                                            <p className="text-gray-400 mb-6 leading-relaxed">
-                                                {selectedProject.description}
-                                            </p>
-                                            <div className="mb-6">
-                                                <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">{content.modal.toolsLabel}</h4>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {selectedProject.tools.map(tag => (
-                                                        <span key={tag} className="text-xs px-3 py-1.5 bg-white/5 border border-white/10 rounded-full text-gray-400">
-                                                            {tag}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    </div>
+
                                 </div>
                             </motion.div>
                         </motion.div>

@@ -19,14 +19,14 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<PageRoute>('home');
   const [receiptId, setReceiptId] = useState<string>('');
 
-  // Handle Hash change for simple routing if user manually changes URL
+  // Handle browser navigation (back/forward buttons) using History API
   useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash.replace('#', '');
+    const getRouteFromPath = () => {
+      const path = window.location.pathname.replace(/^\//, ''); // Remove leading slash
 
-      // Handle parameterized routes like #receipt/RCP-20260105-ABC1
-      if (hash.startsWith('receipt/')) {
-        const id = hash.split('/')[1];
+      // Handle parameterized routes like /receipt/RCP-20260105-ABC1
+      if (path.startsWith('receipt/')) {
+        const id = path.split('/')[1];
         if (id) {
           setCurrentPage('receipt');
           setReceiptId(id);
@@ -35,25 +35,31 @@ const App: React.FC = () => {
       }
 
       // Handle simple routes
-      if (['home', 'work', 'pricing', 'assets', 'bought-access', 'admin'].includes(hash)) {
-        setCurrentPage(hash as PageRoute);
+      if (['work', 'pricing', 'assets', 'bought-access', 'admin'].includes(path)) {
+        setCurrentPage(path as PageRoute);
         setReceiptId(''); // Clear receipt ID when navigating away
       } else {
-        // Default to home if no hash or invalid
-        if (!hash) setCurrentPage('home');
+        // Default to home if no path, root path, or invalid route
+        setCurrentPage('home');
+        setReceiptId('');
       }
     };
 
-    window.addEventListener('hashchange', handleHashChange);
-    // Initial check
-    handleHashChange();
+    const handlePopState = () => {
+      getRouteFromPath();
+    };
 
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    window.addEventListener('popstate', handlePopState);
+    // Initial check on mount
+    getRouteFromPath();
+
+    return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
   const handleNavigate = (page: PageRoute) => {
     setCurrentPage(page);
-    window.location.hash = page === 'home' ? '' : page;
+    const newPath = page === 'home' ? '/' : `/${page}`;
+    window.history.pushState({}, '', newPath);
     window.scrollTo(0, 0);
   };
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Download, ExternalLink, ShoppingBag, Package, X, CheckCircle, Copy, Receipt } from 'lucide-react';
+import { Download, ExternalLink, ShoppingBag, Package, X, CheckCircle, Copy, Receipt, Mail } from 'lucide-react';
 import { AssetItem, Asset } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore';
@@ -24,6 +24,8 @@ const Assets: React.FC = () => {
         isComplete: boolean;
         receiptId: string | null;
         error: string | null;
+        buyerEmail: string;
+        emailError: string | null;
     }>({
         isOpen: false,
         asset: null,
@@ -31,6 +33,8 @@ const Assets: React.FC = () => {
         isComplete: false,
         receiptId: null,
         error: null,
+        buyerEmail: '',
+        emailError: null,
     });
 
     const [content, setContent] = useState({
@@ -123,6 +127,8 @@ const Assets: React.FC = () => {
             isComplete: false,
             receiptId: null,
             error: null,
+            buyerEmail: '',
+            emailError: null,
         });
     };
 
@@ -137,6 +143,8 @@ const Assets: React.FC = () => {
             isComplete: false,
             receiptId: null,
             error: null,
+            buyerEmail: '',
+            emailError: null,
         });
     };
 
@@ -144,18 +152,38 @@ const Assets: React.FC = () => {
      * Initiates Razorpay payment using cloud functions
      * Opens Razorpay checkout modal, creates order on backend, verifies payment
      */
+    /**
+     * Validates email format
+     */
+    const isValidEmail = (email: string): boolean => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    };
+
     const handleCompletePurchase = async () => {
         if (!purchaseModal.asset) return;
 
-        setPurchaseModal(prev => ({ ...prev, isProcessing: true, error: null }));
+        // Validate email before proceeding
+        const trimmedEmail = purchaseModal.buyerEmail.trim();
+        if (!trimmedEmail) {
+            setPurchaseModal(prev => ({ ...prev, emailError: 'Email is required to receive your receipt' }));
+            return;
+        }
+        if (!isValidEmail(trimmedEmail)) {
+            setPurchaseModal(prev => ({ ...prev, emailError: 'Please enter a valid email address' }));
+            return;
+        }
+
+        setPurchaseModal(prev => ({ ...prev, isProcessing: true, error: null, emailError: null }));
 
         try {
             // Initiate payment - this will:
             // 1. Call createOrder cloud function (fetches price from database)
-            // 2. Open Razorpay checkout modal
+            // 2. Open Razorpay checkout modal with email prefilled
             // 3. Verify payment on backend after user completes payment
             // 4. Return receipt ID
-            const receiptId = await initiatePayment(purchaseModal.asset.id);
+            // Razorpay will send payment confirmation email to the buyer
+            const receiptId = await initiatePayment(purchaseModal.asset.id, trimmedEmail);
 
             // Payment successful and verified!
             setPurchaseModal(prev => ({
@@ -195,7 +223,9 @@ const Assets: React.FC = () => {
      */
     const handleViewReceipt = () => {
         if (purchaseModal.receiptId) {
-            window.location.hash = formatReceiptUrl(purchaseModal.receiptId);
+            window.history.pushState({}, '', formatReceiptUrl(purchaseModal.receiptId));
+            // Trigger popstate event so App.tsx can pick up the route change
+            window.dispatchEvent(new PopStateEvent('popstate'));
             closePurchaseModal();
         }
     };
@@ -270,7 +300,12 @@ const Assets: React.FC = () => {
 
                             {/* Bought Access Link Banner */}
                             <motion.a
-                                href="#bought-access"
+                                href="/bought-access"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    window.history.pushState({}, '', '/bought-access');
+                                    window.dispatchEvent(new PopStateEvent('popstate'));
+                                }}
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.3 }}
@@ -491,6 +526,30 @@ const Assets: React.FC = () => {
                                                 </div>
                                             </div>
 
+                                            {/* Email Input Field */}
+                                            <div className="mb-6">
+                                                <label className="block text-gray-400 text-sm mb-2">Your Email Address</label>
+                                                <div className="relative">
+                                                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+                                                    <input
+                                                        type="email"
+                                                        value={purchaseModal.buyerEmail}
+                                                        onChange={(e) => setPurchaseModal(prev => ({
+                                                            ...prev,
+                                                            buyerEmail: e.target.value,
+                                                            emailError: null
+                                                        }))}
+                                                        placeholder="Enter your email for receipt"
+                                                        className="w-full bg-[#0a0a0a] border border-white/10 rounded-lg px-4 py-3 pl-10 text-white placeholder-gray-500 focus:border-neon/50 focus:outline-none transition-colors"
+                                                        disabled={purchaseModal.isProcessing}
+                                                    />
+                                                </div>
+                                                {purchaseModal.emailError && (
+                                                    <p className="mt-2 text-red-400 text-sm">{purchaseModal.emailError}</p>
+                                                )}
+                                                <p className="mt-2 text-gray-500 text-xs">Payment confirmation and receipt will be sent to this email.</p>
+                                            </div>
+
                                             {purchaseModal.error && (
                                                 <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-400 text-sm">
                                                     {purchaseModal.error}
@@ -500,7 +559,7 @@ const Assets: React.FC = () => {
                                             <div className="bg-blue-900/10 border border-blue-500/20 rounded-lg p-4 mb-6">
                                                 <p className="text-blue-200/80 text-sm">
                                                     <strong className="text-blue-300">Secure Payment:</strong> Your payment will be processed securely through Razorpay.
-                                                    You'll receive a receipt ID after successful payment.
+                                                    You'll receive a payment confirmation email with your receipt ID.
                                                 </p>
                                             </div>
 

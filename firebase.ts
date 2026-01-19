@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 
 const firebaseConfig = {
     apiKey: "AIzaSyAxFp2CGRiTFkCBvpwTVgPkH4s7sKFAPho",
@@ -15,3 +16,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+
+// Initialize Functions with the correct region (asia-south1)
+export const functions = getFunctions(app, 'asia-south1');
+
+// Uncomment below to use Firebase Functions emulator for local testing
+// connectFunctionsEmulator(functions, 'localhost', 5001);

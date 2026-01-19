@@ -432,7 +432,7 @@ const Admin: React.FC = () => {
             card1: {
                 name: 'Starter',
                 description: 'Perfect for getting started with quality.',
-                price: '$500',
+                price: '₹40,000',
                 period: '/mo',
                 features: '4 YouTube Shorts / Reels,1 Long-form Video,Basic Color Grading,2 Revision Rounds',
                 button: 'Get Started'
@@ -441,7 +441,7 @@ const Admin: React.FC = () => {
                 badge: 'Most Popular',
                 name: 'Growth',
                 description: 'Consistent content to build your audience.',
-                price: '$1,200',
+                price: '₹1,00,000',
                 period: '/mo',
                 features: '8 YouTube Shorts / Reels,2 Long-form Videos,Advanced Motion Graphics,Custom Thumbnails included,Strategy Call',
                 button: 'Choose Growth'
@@ -449,7 +449,7 @@ const Admin: React.FC = () => {
             card3: {
                 name: 'Full Partner',
                 description: 'For aggressive scaling and brand building.',
-                price: '$2,500',
+                price: '₹2,00,000',
                 period: '/mo',
                 features: '12 YouTube Shorts / Reels,4 Long-form Videos,Full Channel Branding,Priority Support,Unlimited Revisions',
                 button: 'Let\'s Talk'
@@ -887,8 +887,8 @@ const Admin: React.FC = () => {
     const downloadAssetsSampleExcel = () => {
         const sampleData = [
             { Title: 'Cinematic LUTs Starter', Description: '5 basic LUTs for Sony & Canon log footage.', Category: 'free', Type: 'LUTs', Price: '', ImageUrl: '', DownloadLink: 'https://example.com/luts.zip', Order: 1 },
-            { Title: 'Ultimate Thumbnail Pack', Description: '20+ PSD Templates for high CTR.', Category: 'featured', Type: 'Templates', Price: '$29', ImageUrl: 'https://example.com/thumbnail.jpg', DownloadLink: 'https://example.com/buy/thumbnails', Order: 1 },
-            { Title: 'The Creator Master Bundle', Description: 'Everything I use: Presets, SFX, Graphics.', Category: 'premium', Type: 'Bundle', Price: '$99', ImageUrl: '', DownloadLink: 'https://example.com/buy/bundle', Order: 1 }
+            { Title: 'Ultimate Thumbnail Pack', Description: '20+ PSD Templates for high CTR.', Category: 'featured', Type: 'Templates', Price: '₹2,499', ImageUrl: 'https://example.com/thumbnail.jpg', DownloadLink: 'https://example.com/buy/thumbnails', Order: 1 },
+            { Title: 'The Creator Master Bundle', Description: 'Everything I use: Presets, SFX, Graphics.', Category: 'premium', Type: 'Bundle', Price: '₹8,499', ImageUrl: '', DownloadLink: 'https://example.com/buy/bundle', Order: 1 }
         ];
         const worksheet = XLSX.utils.json_to_sheet(sampleData);
         const workbook = XLSX.utils.book_new();
@@ -3422,7 +3422,7 @@ const Admin: React.FC = () => {
                                                 type="text"
                                                 value={assetFormData.price}
                                                 onChange={e => setAssetFormData({ ...assetFormData, price: e.target.value })}
-                                                placeholder="$29"
+                                                placeholder="₹2,499"
                                                 className="w-full bg-[#070707] border border-[#333] rounded p-2 focus:border-[#9B5CFF] outline-none"
                                             />
                                         </div>

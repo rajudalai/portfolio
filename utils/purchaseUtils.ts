@@ -52,12 +52,12 @@ export const createMockPurchase = async (
 };
 
 /**
- * Returns the full URL to the receipt detail page
+ * Returns the path to the receipt detail page
  * @param receiptId - The receipt ID
- * @returns The full hash URL (e.g., "#receipt/RCP-20260105-ABC1")
+ * @returns The path URL (e.g., "/receipt/RCP-20260105-ABC1")
  */
 export const formatReceiptUrl = (receiptId: string): string => {
-    return `#receipt/${receiptId}`;
+    return `/receipt/${receiptId}`;
 };
 
 /**

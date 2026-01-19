@@ -685,7 +685,15 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onScrollTo }) => {
               <div className="">
                 <h3 className="text-base font-medium tracking-tight font-geist text-neutral-100 mb-2" dangerouslySetInnerHTML={{ __html: content.home.portfolio.impactTitle }} />
                 <p className="text-sm font-geist text-neutral-400 mb-6 max-w-md" dangerouslySetInnerHTML={{ __html: content.home.portfolio.impactDesc }} />
-                <a href="#work" className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-white text-black rounded-full font-bold transition-colors shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:bg-btn-gradient hover:text-black hover:border-transparent">
+                <a
+                  href="/work"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    window.history.pushState({}, '', '/work');
+                    window.dispatchEvent(new PopStateEvent('popstate'));
+                  }}
+                  className="inline-flex items-center justify-center gap-2 px-8 py-3 bg-white text-black rounded-full font-bold transition-colors shadow-[0_0_15px_rgba(255,255,255,0.1)] hover:bg-btn-gradient hover:text-black hover:border-transparent"
+                >
                   <span dangerouslySetInnerHTML={{ __html: content.home.portfolio.buttonText }} />
                   <span className="inline-flex h-1.5 w-1.5 rounded-full bg-black"></span>
                 </a>
@@ -927,24 +935,7 @@ const Home: React.FC<HomeProps> = ({ onNavigate, onScrollTo }) => {
                   )}
                 </div>
 
-                {/* Info Section */}
-                <div className="lg:w-80 p-6 lg:p-8 bg-[#0a0a0a]/50 backdrop-blur-sm overflow-y-auto">
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2 }}
-                  >
-                    <div className="text-xs uppercase font-bold text-neon mb-3 tracking-widest">
-                      {selectedProject.category}
-                    </div>
-                    <h2 className="text-2xl lg:text-3xl font-bold text-white mb-4">
-                      {selectedProject.title}
-                    </h2>
-                    <p className="text-gray-400 mb-6 leading-relaxed">
-                      Featured project from the portfolio collection.
-                    </p>
-                  </motion.div>
-                </div>
+                
               </div>
             </motion.div>
           </motion.div>

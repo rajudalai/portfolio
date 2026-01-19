@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Functions Test Page</title>
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #2a2a2a;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --accent-blue: #3b82f6;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-yellow: #eab308;
+            --border-color: #333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        header h1 {
+            font-size: 1.75rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent-blue), #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .status-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: var(--bg-secondary);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--accent-yellow);
+        }
+
+        .status-indicator.connected {
+            background: var(--accent-green);
+        }
+
+        .status-indicator.error {
+            background: var(--accent-red);
+        }
+
+        .status-text {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .test-section {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .test-section h2 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .test-section h2::before {
+            content: '';
+            width: 4px;
+            height: 1rem;
+            background: var(--accent-blue);
+            border-radius: 2px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-group input:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .input-group input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: var(--bg-tertiary);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        button.secondary {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+        }
+
+        button.secondary:hover {
+            background: #3a3a3a;
+        }
+
+        .console {
+            background: #000;
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.85rem;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 1.5rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .console-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .console-header span {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        .log-entry {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #1a1a1a;
+            word-break: break-all;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-entry .timestamp {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            margin-right: 0.5rem;
+        }
+
+        .log-entry.success {
+            color: var(--accent-green);
+        }
+
+        .log-entry.error {
+            color: var(--accent-red);
+        }
+
+        .log-entry.info {
+            color: var(--accent-blue);
+        }
+
+        .log-entry.warning {
+            color: var(--accent-yellow);
+        }
+
+        .log-data {
+            background: var(--bg-tertiary);
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-top: 0.25rem;
+            white-space: pre-wrap;
+            color: var(--text-secondary);
+        }
+
+        .quick-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .help-text {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🧪 Firebase Functions Test Page</h1>
+            <p>Debug backend functions using Firebase Emulator</p>
+        </header>
+
+        <div class="status-bar">
+            <div class="status-indicator" id="statusIndicator"></div>
+            <span class="status-text" id="statusText">Initializing Firebase...</span>
+        </div>
+
+        <!-- Ping Test -->
+        <div class="test-section">
+            <h2>Connectivity Test</h2>
+            <div class="quick-actions">
+                <button onclick="testPing()">Test Ping</button>
+            </div>
+            <p class="help-text">Tests basic connectivity to Firebase Functions. Should return "ok" if everything is
+                working.</p>
+        </div>
+
+        <!-- Create Order Test -->
+        <div class="test-section">
+            <h2>Create Order</h2>
+            <div class="input-group">
+                <input type="text" id="assetIdInput" placeholder="Enter Asset ID (e.g., abc123)">
+                <button onclick="testCreateOrder()">Test Create Order</button>
+            </div>
+            <p class="help-text">Creates a Razorpay order for the specified asset. Requires the asset to exist in
+                Firestore.</p>
+        </div>
+
+        <!-- Verify Receipt Test -->
+        <div class="test-section">
+            <h2>Verify Receipt</h2>
+            <div class="input-group">
+                <input type="text" id="receiptIdInput" placeholder="Enter Receipt ID (e.g., rcpt_1234567890)">
+                <button onclick="testVerifyReceipt()">Test Verify Receipt</button>
+            </div>
+            <p class="help-text">Verifies if a purchase receipt exists and is valid.</p>
+        </div>
+
+        <!-- Verify Payment Test (Advanced) -->
+        <div class="test-section">
+            <h2>Verify Payment (Advanced)</h2>
+            <div class="input-group">
+                <input type="text" id="orderIdInput" placeholder="Razorpay Order ID">
+            </div>
+            <div class="input-group">
+                <input type="text" id="paymentIdInput" placeholder="Razorpay Payment ID">
+            </div>
+            <div class="input-group">
+                <input type="text" id="signatureInput" placeholder="Razorpay Signature">
+            </div>
+            <div class="input-group">
+                <input type="text" id="paymentAssetIdInput" placeholder="Asset ID">
+                <button onclick="testVerifyPayment()">Test Verify Payment</button>
+            </div>
+            <p class="help-text">⚠️ Requires real Razorpay payment data. Useful for testing error handling.</p>
+        </div>
+
+        <!-- Console Output -->
+        <div class="console">
+            <div class="console-header">
+                <span>📋 Console Output</span>
+                <button class="secondary" onclick="clearConsole()">Clear</button>
+            </div>
+            <div id="consoleOutput">
+                <div class="log-entry info">Ready to test functions...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK (Modular via CDN) -->
+    <script type="module">
+        // Firebase App, Auth and Functions imports
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-functions.js';
+        import { getAuth, signInAnonymously, connectAuthEmulator } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // Firebase configuration (same as your project)
+        const firebaseConfig = {
+            apiKey: "AIzaSyAxFp2CGRiTFkCBvpwTVgPkH4s7sKFAPho",
+            authDomain: "rajudalai-portfolio.firebaseapp.com",
+            projectId: "rajudalai-portfolio",
+            storageBucket: "rajudalai-portfolio.firebasestorage.app",
+            messagingSenderId: "23842439102",
+            appId: "1:23842439102:web:44e71e4059fb00653e83ef"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const functions = getFunctions(app, 'asia-south1');
+
+        // Connect to emulators for local testing
+        // IMPORTANT: Comment these lines out when testing against production
+        connectFunctionsEmulator(functions, 'localhost', 5002);
+        connectAuthEmulator(auth, 'http://localhost:9099');
+
+        // Update status
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+
+        // Sign in anonymously to satisfy function authentication requirements
+        try {
+            const userCredential = await signInAnonymously(auth);
+            statusIndicator.classList.add('connected');
+            statusText.textContent = `Connected to Emulator (localhost:5002) - Signed in as: ${userCredential.user.uid.substring(0, 8)}...`;
+            window.logMessage('Firebase initialized and signed in anonymously', 'success');
+            window.logMessage(`User ID: ${userCredential.user.uid}`, 'info');
+        } catch (error) {
+            statusIndicator.classList.add('error');
+            statusText.textContent = `Auth Error: ${error.message}`;
+            window.logMessage(`Anonymous sign-in failed: ${error.message}`, 'error');
+        }
+
+        // Make functions available globally
+        window.firebaseFunctions = functions;
+        window.httpsCallable = httpsCallable;
+        window.logMessage('Using emulator at localhost:5002', 'info');
+    </script>
+
+    <script>
+        // Console logging helper
+        function logMessage(message, type = 'info', data = null) {
+            const consoleOutput = document.getElementById('consoleOutput');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+
+            const timestamp = new Date().toLocaleTimeString();
+            entry.innerHTML = `<span class="timestamp">[${timestamp}]</span>${message}`;
+
+            if (data) {
+                const dataBlock = document.createElement('div');
+                dataBlock.className = 'log-data';
+                dataBlock.textContent = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
+                entry.appendChild(dataBlock);
+            }
+
+            consoleOutput.appendChild(entry);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        window.logMessage = logMessage;
+
+        function clearConsole() {
+            const consoleOutput = document.getElementById('consoleOutput');
+            consoleOutput.innerHTML = '<div class="log-entry info">Console cleared.</div>';
+        }
+
+        // Test Functions - Using HTTP endpoints (no auth required)
+        const EMULATOR_BASE_URL = 'http://127.0.0.1:5002/rajudalai-portfolio/asia-south1';
+
+        async function testPing() {
+            logMessage('Calling testPing (HTTP endpoint)...', 'info');
+            try {
+                const response = await fetch(`${EMULATOR_BASE_URL}/testPing`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    logMessage('testPing() successful!', 'success', result);
+                } else {
+                    logMessage(`testPing() returned error status: ${response.status}`, 'error', result);
+                }
+            } catch (error) {
+                logMessage(`testPing() failed: ${error.message}`, 'error');
+            }
+        }
+        window.testPing = testPing;
+
+        async function testCreateOrder() {
+            const assetId = document.getElementById('assetIdInput').value.trim();
+            if (!assetId) {
+                logMessage('Please enter an Asset ID', 'warning');
+                return;
+            }
+
+            logMessage(`Calling testCreateOrder (HTTP) with assetId: ${assetId}...`, 'info');
+            try {
+                const response = await fetch(`${EMULATOR_BASE_URL}/testCreateOrder`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ assetId })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    logMessage('testCreateOrder() successful!', 'success', result);
+                } else {
+                    logMessage(`testCreateOrder() error (${response.status}):`, 'error', result);
+                }
+            } catch (error) {
+                logMessage(`testCreateOrder() failed: ${error.message}`, 'error');
+            }
+        }
+        window.testCreateOrder = testCreateOrder;
+
+        async function testVerifyReceipt() {
+            const receiptId = document.getElementById('receiptIdInput').value.trim();
+            if (!receiptId) {
+                logMessage('Please enter a Receipt ID', 'warning');
+                return;
+            }
+
+            logMessage(`Calling testVerifyReceipt (HTTP) with receiptId: ${receiptId}...`, 'info');
+            try {
+                const response = await fetch(`${EMULATOR_BASE_URL}/testVerifyReceipt`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ receiptId })
+                });
+                const result = await response.json();
+                logMessage('testVerifyReceipt() returned:', response.ok ? 'success' : 'warning', result);
+            } catch (error) {
+                logMessage(`testVerifyReceipt() failed: ${error.message}`, 'error');
+            }
+        }
+        window.testVerifyReceipt = testVerifyReceipt;
+
+        async function testVerifyPayment() {
+            const orderId = document.getElementById('orderIdInput').value.trim();
+            const paymentId = document.getElementById('paymentIdInput').value.trim();
+            const signature = document.getElementById('signatureInput').value.trim();
+            const assetId = document.getElementById('paymentAssetIdInput').value.trim();
+
+            if (!orderId || !paymentId || !signature || !assetId) {
+                logMessage('Please fill in all payment verification fields', 'warning');
+                return;
+            }
+
+            logMessage('Calling verifyPayment()...', 'info');
+            try {
+                const verifyPaymentFn = window.httpsCallable(window.firebaseFunctions, 'verifyPayment');
+                const result = await verifyPaymentFn({ orderId, paymentId, signature, assetId });
+                logMessage('verifyPayment() successful!', 'success', result.data);
+            } catch (error) {
+                logMessage(`verifyPayment() failed: ${error.message}`, 'error', error.details || error.code);
+            }
+        }
+        window.testVerifyPayment = testVerifyPayment;
+    </script>
+</body>
+
+</html>

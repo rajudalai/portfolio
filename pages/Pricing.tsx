@@ -14,7 +14,7 @@ const Pricing: React.FC = () => {
     card1: {
       name: 'Starter',
       description: 'Perfect for getting started with quality.',
-      price: '$500',
+      price: '₹40,000',
       period: '/mo',
       features: '4 YouTube Shorts / Reels,1 Long-form Video,Basic Color Grading,2 Revision Rounds',
       button: 'Get Started'
@@ -23,7 +23,7 @@ const Pricing: React.FC = () => {
       badge: 'Most Popular',
       name: 'Growth',
       description: 'Consistent content to build your audience.',
-      price: '$1,200',
+      price: '₹1,00,000',
       period: '/mo',
       features: '8 YouTube Shorts / Reels,2 Long-form Videos,Advanced Motion Graphics,Custom Thumbnails included,Strategy Call',
       button: 'Choose Growth'
@@ -31,7 +31,7 @@ const Pricing: React.FC = () => {
     card3: {
       name: 'Full Partner',
       description: 'For aggressive scaling and brand building.',
-      price: '$2,500',
+      price: '₹2,00,000',
       period: '/mo',
       features: '12 YouTube Shorts / Reels,4 Long-form Videos,Full Channel Branding,Priority Support,Unlimited Revisions',
       button: 'Let\'s Talk'
